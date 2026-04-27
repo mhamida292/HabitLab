@@ -1,38 +1,86 @@
-import { api } from '/static/js/api.js';
+import { api, toast } from '/static/js/api.js';
 
-function levelFor(streak) {
-    if (streak >= 7) return 4;
-    if (streak >= 4) return 3;
-    if (streak >= 2) return 2;
-    if (streak >= 1) return 1;
-    return 0;
-}
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-export function renderSingleHeatmap(container, days, weeks = 26) {
-    container.innerHTML = '';
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+
+// Render a clickable week-column heatmap with month + day-of-week labels.
+// `host` should be the wrapper element returned by createHeatmapWrap().
+export function renderSingleHeatmap(host, days, weeks = 26, habitId = null) {
+    const grid = host.querySelector('.heatmap');
+    const monthsEl = host.querySelector('.hm-months');
+    grid.innerHTML = '';
+    monthsEl.innerHTML = '';
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const doneSet = new Set(days.filter(d => d.done).map(d => d.date));
-    const cells = weeks * 7;
-    const start = new Date(today);
-    start.setDate(start.getDate() - cells + 1);
 
-    let streak = 0;
-    for (let i = 0; i < cells; i++) {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
-        const iso = d.toISOString().slice(0, 10);
-        const cell = document.createElement('div');
-        cell.className = 'hm-cell';
-        if (doneSet.has(iso)) {
-            streak += 1;
-            cell.classList.add(`l${levelFor(streak)}`);
-        } else {
-            streak = 0;
+    // Anchor on Monday so each column is a full Mon..Sun week.
+    const todayDow = (today.getDay() + 6) % 7; // 0=Mon..6=Sun
+    const lastMonday = new Date(today);
+    lastMonday.setDate(lastMonday.getDate() - todayDow);
+    const start = new Date(lastMonday);
+    start.setDate(start.getDate() - (weeks - 1) * 7);
+
+    const cellsByCol = [];
+    for (let col = 0; col < weeks; col++) {
+        const colCells = [];
+        for (let row = 0; row < 7; row++) {
+            const d = new Date(start);
+            d.setDate(start.getDate() + col * 7 + row);
+            const iso = isoDate(d);
+            const isFuture = d > today;
+
+            const cell = document.createElement('div');
+            cell.className = 'hm-cell';
+            cell.dataset.date = iso;
+            cell.dataset.done = doneSet.has(iso) ? '1' : '0';
+            if (doneSet.has(iso)) cell.classList.add('l3');
+            if (isFuture) cell.classList.add('future');
+            cell.title = `${iso}${doneSet.has(iso) ? ' ✓' : ''}`;
+            if (!isFuture && habitId) {
+                cell.addEventListener('click', () => toggleCell(cell, habitId));
+            }
+            grid.appendChild(cell);
+            colCells.push({ cell, date: d });
         }
-        cell.title = `${iso}${doneSet.has(iso) ? ' ✓' : ''}`;
-        container.appendChild(cell);
+        cellsByCol.push(colCells);
+    }
+
+    // Month labels above the grid: one label per column where a new month begins.
+    let lastMonthShown = -1;
+    for (let col = 0; col < weeks; col++) {
+        const firstOfCol = cellsByCol[col][0].date;
+        const m = firstOfCol.getMonth();
+        const lbl = document.createElement('div');
+        lbl.className = 'hm-month-lbl';
+        if (m !== lastMonthShown) {
+            lbl.textContent = MONTHS[m];
+            lastMonthShown = m;
+        } else {
+            lbl.textContent = '';
+        }
+        monthsEl.appendChild(lbl);
+    }
+}
+
+async function toggleCell(cell, habitId) {
+    const wasDone = cell.dataset.done === '1';
+    const nextDone = !wasDone;
+    cell.dataset.done = nextDone ? '1' : '0';
+    cell.classList.toggle('l3', nextDone);
+    cell.title = `${cell.dataset.date}${nextDone ? ' ✓' : ''}`;
+    try {
+        await api.post(`/api/v1/habits/${habitId}/completions`, {
+            done: nextDone,
+            date: cell.dataset.date,
+            date_fmt: '%Y-%m-%d',
+        });
+    } catch (err) {
+        cell.dataset.done = wasDone ? '1' : '0';
+        cell.classList.toggle('l3', wasDone);
+        toast(err.message, 'error');
     }
 }
 
@@ -42,7 +90,8 @@ export async function renderHabitDetailHeatmap() {
     const habitId = root.dataset.habitId;
     const data = await api.get(`/api/v1/habits/${habitId}/heatmap?years=1`);
     const days = data.years[0]?.days ?? [];
-    renderSingleHeatmap(document.getElementById('dHeatmap'), days, 26);
+    const host = document.getElementById('dHeatmapWrap');
+    renderSingleHeatmap(host, days, 26, habitId);
 }
 
 export async function renderMultiYearHeatmap() {

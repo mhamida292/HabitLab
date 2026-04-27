@@ -25,8 +25,14 @@
         <div class="stat-card"><div class="stat-num" id="dTotal">—</div><div class="stat-lbl">Total</div></div>
     </div>
 
-    <div class="ss-title" style="margin-top:18px">Past 26 weeks</div>
-    <div class="heatmap" id="dHeatmap"></div>
+    <div class="ss-title" style="margin-top:18px">Past 26 weeks <span style="font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--sans);color:var(--text-muted);margin-left:8px">· click any day to toggle</span></div>
+    <div class="hm-wrap" id="dHeatmapWrap">
+        <div class="hm-months"></div>
+        <div class="hm-body">
+            <div class="hm-dows"><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span></div>
+            <div class="heatmap"></div>
+        </div>
+    </div>
 
     <div class="ss-title" style="margin-top:18px">Recent notes</div>
     <ul id="dNotes" style="list-style:none;padding:0"></ul>
