@@ -129,16 +129,17 @@ button,input,textarea,select{font-family:var(--sans)}
 .hm-count{font-size:8px;font-weight:700;color:var(--text);font-family:var(--mono);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 
 /* ── Calendar (month view) ─────────────────────────────────── */
-.cal { padding: 4px 0; max-width: 420px; margin: 0 auto; }
-.cal-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 12px; }
-.cal-title { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
-.cal-nav { background: none; border: 1px solid var(--border); color: var(--text-dim); width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all .15s; padding: 0; }
+.cal { padding: 4px 0; max-width: 320px; margin: 0 auto; }
+.cal-head, .cal-dows, .cal-grid { max-width: 100%; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px; }
+.cal-title { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
+.cal-nav { background: none; border: 1px solid var(--border); color: var(--text-dim); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all .15s; padding: 0; }
 .cal-nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .cal-nav:disabled { opacity: .25; cursor: not-allowed; }
-.cal-dows { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 0 2px 6px; font-family: var(--mono); font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.cal-dows { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; padding: 0 0 4px; font-family: var(--mono); font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
 .cal-dows span { text-align: center; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 0 2px; }
-.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--surface2); color: var(--text-dim); font-size: 13px; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; position: relative; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; padding: 0; }
+.cal-day { aspect-ratio: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; border-radius: 5px; background: var(--surface2); color: var(--text-dim); font-size: 11px; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s; position: relative; }
 .cal-day.empty { background: transparent; cursor: default; }
 .cal-day.future { opacity: .4; cursor: not-allowed; }
 .cal-day.today:not(.done):not(.partial) { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); font-weight: 600; }
@@ -147,17 +148,8 @@ button,input,textarea,select{font-family:var(--sans)}
 .cal-day:hover:not(.future):not(.empty):not(.done) { background: var(--surface3); color: var(--text); }
 .cal-day.done:hover { filter: brightness(1.08); }
 .cal-num { line-height: 1; }
-.cal-count { position: absolute; bottom: 2px; right: 4px; font-size: 8px; font-family: var(--mono); color: var(--text-muted); }
+.cal-count { position: absolute; bottom: 1px; right: 3px; font-size: 7px; font-family: var(--mono); color: var(--text-muted); line-height: 1; }
 .cal-day.done .cal-count { color: rgba(255,255,255,0.85); }
-
-@media (max-width: 768px) {
-    .cal { max-width: 100%; padding: 0; }
-    .cal-head, .cal-dows, .cal-grid { max-width: 320px; margin-left: auto; margin-right: auto; }
-    .cal-grid { gap: 3px; padding: 0; }
-    .cal-dows { gap: 3px; padding: 0 0 4px; font-size: 8px; }
-    .cal-day { font-size: 11px; border-radius: 5px; max-width: 44px; max-height: 44px; }
-    .cal-count { font-size: 7px; bottom: 1px; right: 2px; }
-}
 
 /* ── Toast + shade ─────────────────────────────────────────── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--success);color:#000;padding:10px 24px;border-radius:100px;font-family:var(--mono);font-size:12px;font-weight:700;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:200;pointer-events:none;white-space:nowrap}
