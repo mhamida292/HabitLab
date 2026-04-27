@@ -128,6 +128,16 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         } catch (err) { toast(err.message, 'error'); }
     });
+
+    document.getElementById('wipeBtn')?.addEventListener('click', async () => {
+        const typed = prompt('This permanently deletes every habit and your account. Type DELETE to confirm.');
+        if (typed !== 'DELETE') return;
+        try {
+            await api.post('/auth/wipe');
+        } catch (err) { toast(err.message, 'error'); return; }
+        localStorage.removeItem('jwt');
+        window.location.href = '/login';
+    });
 });
 
 // ── Logout ───────────────────────────────────────────────────────

@@ -73,3 +73,13 @@ def init_auth_routes(app: FastAPI) -> None:
             )
         await user_manager._update(user, {"password": body.new_password})
         return Response(status_code=204)
+
+    @app.post("/auth/wipe", tags=["auth"], status_code=204)
+    async def wipe_all_data(
+        user: User = Depends(current_active_user),
+        user_manager: UserManager = Depends(get_user_manager),
+    ):
+        """Delete the user's habit data AND the user account.
+        Frontend should clear its JWT and redirect to /login afterwards."""
+        await user_manager.delete(user)
+        return Response(status_code=204)
