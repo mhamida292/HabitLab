@@ -173,12 +173,7 @@ async function saveHabitFromModal() {
             await api.put(`/api/v1/habits/${editingHabitId}`, { name, tags });
             toast('Saved');
         } else {
-            await api.post('/api/v1/habits', { name });
-            const created = await api.get('/api/v1/habits');
-            const newest = created[created.length - 1];
-            if (tags.length && newest) {
-                await api.put(`/api/v1/habits/${newest.id}`, { tags });
-            }
+            await api.post('/api/v1/habits', { name, tags });
             toast('Created');
         }
         closeHabitModal();

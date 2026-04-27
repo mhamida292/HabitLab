@@ -82,11 +82,12 @@ async def get_habits(
     habit_list: HabitList = Depends(current_habit_list),
 ):
     habits = HabitListBuilder(habit_list).status(status).build()
-    return [{"id": x.id, "name": x.name} for x in habits]
+    return [{"id": x.id, "name": x.name, "tags": x.tags or []} for x in habits]
 
 
 class CreateHabit(BaseModel):
     name: str
+    tags: list[str] | None = None
 
 
 @api_router.post("/habits", tags=["habits"])
@@ -99,7 +100,12 @@ async def post_habits(
     id = await habit_list.add(habit.name)
     logger.info(f"Created new habit {id} for user {user.email}")
 
-    return {"id": id, "name": habit.name}
+    if habit.tags:
+        created = await habit_list.get_habit_by(id)
+        if created is not None:
+            created.tags = habit.tags
+
+    return {"id": id, "name": habit.name, "tags": habit.tags or []}
 
 
 @api_router.get("/habits/{habit_id}", tags=["habits"])
