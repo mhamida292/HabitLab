@@ -1,12 +1,16 @@
 import datetime
+import uuid
+from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
 from beaverhabits.logger import logger
 from pydantic import BaseModel
 
+from beaverhabits.app import crud as auth_crud
 from beaverhabits.app.db import User
 from beaverhabits.app.dependencies import current_active_user
+from beaverhabits.configs import settings
 from beaverhabits.core.completions import CStatus, get_habit_date_completion
 from beaverhabits.storage import get_user_dict_storage
 from beaverhabits.storage.dict import DictHabitList
@@ -17,6 +21,9 @@ from beaverhabits.storage.storage import (
     HabitListBuilder,
     HabitStatus,
 )
+
+ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
 api_router = APIRouter()
 
@@ -230,6 +237,126 @@ async def put_habit_completions(
     habit = await _get_user_habit(user, habit_id)
     await habit.tick(day, tick.done, tick.text)
     return {"day": day.strftime(tick.date_fmt), "done": tick.done}
+
+
+@api_router.get("/habits/{habit_id}/stats", tags=["habits"])
+async def get_habit_stats(
+    habit_id: str,
+    user: User = Depends(current_active_user),
+):
+    habit = await _get_user_habit(user, habit_id)
+    today = datetime.date.today()
+    done_dates = sorted(
+        (r.day for r in habit.records if r.done),
+        reverse=True,
+    )
+    done_set = set(done_dates)
+
+    streak = 0
+    cursor = today
+    while cursor in done_set:
+        streak += 1
+        cursor -= datetime.timedelta(days=1)
+
+    def percent(window_days: int) -> float:
+        cutoff = today - datetime.timedelta(days=window_days)
+        hits = sum(1 for d in done_dates if cutoff <= d <= today)
+        return round(hits / window_days * 100, 1)
+
+    return {
+        "streak": streak,
+        "total": len(done_dates),
+        "percent_30d": percent(30),
+        "percent_90d": percent(90),
+    }
+
+
+@api_router.get("/habits/{habit_id}/heatmap", tags=["habits"])
+async def get_habit_heatmap(
+    habit_id: str,
+    years: int = Query(1, ge=1, le=10),
+    user: User = Depends(current_active_user),
+):
+    habit = await _get_user_habit(user, habit_id)
+    today = datetime.date.today()
+    done_set = {r.day for r in habit.records if r.done}
+
+    out_years = []
+    for offset in range(years):
+        year = today.year - offset
+        first = datetime.date(year, 1, 1)
+        last = datetime.date(year, 12, 31)
+        days = []
+        cursor = first
+        while cursor <= last:
+            days.append({
+                "date": cursor.isoformat(),
+                "done": cursor in done_set,
+            })
+            cursor += datetime.timedelta(days=1)
+        out_years.append({"year": year, "days": days})
+
+    return {"years": out_years}
+
+
+@api_router.post("/uploads", tags=["uploads"])
+async def post_upload(
+    file: UploadFile = File(...),
+    user: User = Depends(current_active_user),
+):
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail="Unsupported file type")
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large")
+    ext_map = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+    }
+    ext = ext_map[file.content_type]
+    name = f"{uuid.uuid4().hex}{ext}"
+    upload_dir = Path(settings.DATA_DIR) / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    (upload_dir / name).write_bytes(contents)
+    return {"url": f"/uploads/{name}"}
+
+
+@api_router.get("/tokens", tags=["tokens"])
+async def get_token(user: User = Depends(current_active_user)):
+    token = await auth_crud.get_user_api_token(user)
+    return {"token": token}
+
+
+@api_router.post("/tokens", tags=["tokens"])
+async def create_token(user: User = Depends(current_active_user)):
+    token = await auth_crud.create_user_api_token(user)
+    return {"token": token}
+
+
+@api_router.delete("/tokens", tags=["tokens"], status_code=204)
+async def delete_token(user: User = Depends(current_active_user)):
+    await auth_crud.delete_user_api_token(user)
+
+
+@api_router.get("/export", tags=["data"])
+async def export_data(habit_list: HabitList = Depends(current_habit_list)):
+    # DictHabitList exposes .data which is {"habits": [...]}
+    return {"habits": habit_list.data.get("habits", [])}
+
+
+@api_router.post("/import", tags=["data"])
+async def import_data(
+    payload: dict,
+    user: User = Depends(current_active_user),
+):
+    habits = payload.get("habits")
+    if not isinstance(habits, list):
+        raise HTTPException(status_code=400, detail="Payload missing 'habits' list")
+    habit_list = await _get_or_create_habit_list(user)
+    habit_list.data["habits"] = habits
+    return {"ok": True, "count": len(habits)}
 
 
 def format_json_response(habit: Habit) -> dict:

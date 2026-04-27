@@ -31,6 +31,10 @@ app = FastAPI(lifespan=lifespan)
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+UPLOADS_DIR = Path(settings.DATA_DIR) / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 init_metrics_routes(app)
 init_auth_routes(app)
 init_api_routes(app)
