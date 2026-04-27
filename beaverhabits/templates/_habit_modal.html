@@ -10,6 +10,18 @@
                 <input class="finp" id="habitNameIn" maxlength="80" placeholder="e.g. Drink water">
             </div>
             <div class="fg">
+                <label class="fl">Icon</label>
+                <div class="icon-row">
+                    <input class="finp icon-input" id="habitIconIn" maxlength="4" value="📌" style="width:64px;text-align:center;font-size:22px">
+                    <div class="icon-grid" id="iconGrid"></div>
+                </div>
+            </div>
+            <div class="fg">
+                <label class="fl">Times per day</label>
+                <input class="finp" id="habitTargetIn" type="number" min="1" max="99" value="1" style="width:120px">
+                <div class="cwarn" style="margin-top:4px;text-align:left">Set higher than 1 for habits like "pray 5 times a day". Each click on a day adds one. The day shows as fully done when count reaches the target.</div>
+            </div>
+            <div class="fg">
                 <label class="fl">Tags (comma-separated)</label>
                 <input class="finp" id="habitTagsIn" placeholder="health, learning">
             </div>

@@ -103,8 +103,9 @@ export async function renderHabitDetailHeatmap() {
     const habitId = root.dataset.habitId;
     const data = await api.get(`/api/v1/habits/${habitId}/heatmap?years=1`);
     const days = data.years[0]?.days ?? [];
+    const target = data.target_count || 1;
     const host = document.getElementById('dHeatmapWrap');
-    renderSingleHeatmap(host, days, 26, habitId);
+    renderSingleHeatmap(host, days, 26, habitId, target);
 }
 
 export async function renderMultiYearHeatmap() {

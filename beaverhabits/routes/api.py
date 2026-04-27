@@ -84,12 +84,23 @@ async def get_habits(
     habit_list: HabitList = Depends(current_habit_list),
 ):
     habits = HabitListBuilder(habit_list).status(status).build()
-    return [{"id": x.id, "name": x.name, "tags": x.tags or []} for x in habits]
+    return [
+        {
+            "id": x.id,
+            "name": x.name,
+            "tags": x.tags or [],
+            "icon": x.icon,
+            "target_count": x.target_count,
+        }
+        for x in habits
+    ]
 
 
 class CreateHabit(BaseModel):
     name: str
     tags: list[str] | None = None
+    icon: str | None = None
+    target_count: int | None = None
 
 
 @api_router.post("/habits", tags=["habits"])
@@ -102,13 +113,23 @@ async def post_habits(
     id = await habit_list.add(habit.name)
     logger.info(f"Created new habit {id} for user {user.email}")
 
-    if habit.tags:
-        created = await habit_list.get_habit_by(id)
-        if created is not None:
+    created = await habit_list.get_habit_by(id)
+    if created is not None:
+        if habit.tags:
             created.tags = habit.tags
+        if habit.icon:
+            created.icon = habit.icon
+        if habit.target_count and habit.target_count > 0:
+            created.target_count = habit.target_count
 
     await _storage.save_user_habit_list(user, habit_list)
-    return {"id": id, "name": habit.name, "tags": habit.tags or []}
+    return {
+        "id": id,
+        "name": habit.name,
+        "tags": habit.tags or [],
+        "icon": (created.icon if created else "📌"),
+        "target_count": (created.target_count if created else 1),
+    }
 
 
 @api_router.get("/habits/{habit_id}", tags=["habits"])
@@ -131,6 +152,8 @@ class UpdateHabit(BaseModel):
     status: HabitStatus | None = None
     period: UpdateHabitPeriod | None = None
     tags: list[str] | None = None
+    icon: str | None = None
+    target_count: int | None = None
 
 
 @api_router.put("/habits/{habit_id}", tags=["habits"])
@@ -157,6 +180,10 @@ async def put_habit(
         )
     if habit.tags is not None:
         existing_habit.tags = habit.tags
+    if habit.icon is not None:
+        existing_habit.icon = habit.icon
+    if habit.target_count is not None and habit.target_count > 0:
+        existing_habit.target_count = habit.target_count
 
     await _storage.save_user_habit_list(user, habit_list)
     return format_json_response(existing_habit)
@@ -233,7 +260,8 @@ async def get_habit_completions(
 
 
 class Tick(BaseModel):
-    done: bool
+    done: bool | None = None
+    count: int | None = None
     date: str
     text: str | None = None
     date_fmt: str = "%d-%m-%Y"
@@ -254,9 +282,14 @@ async def put_habit_completions(
     habit = await habit_list.get_habit_by(habit_id)
     if habit is None:
         raise HTTPException(status_code=404, detail="Habit not found")
-    await habit.tick(day, tick.done, tick.text)
+    record = await habit.tick(day, done=tick.done, text=tick.text, count=tick.count)
     await _storage.save_user_habit_list(user, habit_list)
-    return {"day": day.strftime(tick.date_fmt), "done": tick.done}
+    return {
+        "day": day.strftime(tick.date_fmt),
+        "done": record.done,
+        "count": record.count,
+        "target_count": habit.target_count,
+    }
 
 
 @api_router.get("/habits/{habit_id}/stats", tags=["habits"])
@@ -265,9 +298,10 @@ async def get_habit_stats(
     user: User = Depends(current_active_user),
 ):
     habit = await _get_user_habit(user, habit_id)
+    target = habit.target_count
     today = datetime.date.today()
     done_dates = sorted(
-        (r.day for r in habit.records if r.done),
+        (r.day for r in habit.records if r.count >= target),
         reverse=True,
     )
     done_set = set(done_dates)
@@ -288,6 +322,7 @@ async def get_habit_stats(
         "total": len(done_dates),
         "percent_30d": percent(30),
         "percent_90d": percent(90),
+        "target_count": target,
     }
 
 
@@ -298,8 +333,9 @@ async def get_habit_heatmap(
     user: User = Depends(current_active_user),
 ):
     habit = await _get_user_habit(user, habit_id)
+    target = habit.target_count
     today = datetime.date.today()
-    done_set = {r.day for r in habit.records if r.done}
+    counts_by_day = {r.day: r.count for r in habit.records}
 
     out_years = []
     for offset in range(years):
@@ -309,14 +345,16 @@ async def get_habit_heatmap(
         days = []
         cursor = first
         while cursor <= last:
+            cnt = counts_by_day.get(cursor, 0)
             days.append({
                 "date": cursor.isoformat(),
-                "done": cursor in done_set,
+                "count": cnt,
+                "done": cnt >= target,
             })
             cursor += datetime.timedelta(days=1)
         out_years.append({"year": year, "days": days})
 
-    return {"years": out_years}
+    return {"years": out_years, "target_count": target}
 
 
 @api_router.post("/uploads", tags=["uploads"])
@@ -424,7 +462,12 @@ def _record_to_dict(r) -> dict:
         day = r.day.isoformat()
     except Exception:
         day = r.data.get("day") if hasattr(r, "data") else None
-    return {"day": day, "done": bool(r.done), "text": getattr(r, "text", "") or ""}
+    return {
+        "day": day,
+        "done": bool(r.done),
+        "count": int(getattr(r, "count", 1 if r.done else 0)),
+        "text": getattr(r, "text", "") or "",
+    }
 
 
 def format_json_response(habit: Habit) -> dict:
@@ -444,6 +487,8 @@ def format_json_response(habit: Habit) -> dict:
         "status": getattr(habit.status, "value", str(habit.status)),
         "period": period_out,
         "tags": habit.tags,
+        "icon": habit.icon,
+        "target_count": habit.target_count,
     }
 
 

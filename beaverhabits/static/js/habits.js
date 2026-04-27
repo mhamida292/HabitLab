@@ -2,6 +2,12 @@ import { api, toast } from '/static/js/api.js';
 import { openNoteEditor } from '/static/js/notes.js';
 import { renderHabitDetailHeatmap } from '/static/js/heatmap.js';
 
+const ICON_PALETTE = [
+    '📌','💧','📚','🏃','🧘','🙏','💪','🌅',
+    '🍎','💤','✍️','🎵','🎨','🌱','💊','🚶',
+    '🧠','❤️','🚴','🛌','📖','🥗','🧹','📞',
+];
+
 let allHabits = [];
 let activeFilter = 'all';
 let activeTag = null;
@@ -28,13 +34,27 @@ function renderDayLabels() {
     labels.innerHTML = out.map(l => `<span>${l}</span>`).join('');
 }
 
-function statusFromRecords(records, isoDay) {
-    const rec = records?.find(r => r.day === isoDay);
-    if (!rec) return '';
-    return rec.done ? 'yes' : '';
+function recordFor(records, isoDay) {
+    return records?.find(r => r.day === isoDay) || null;
 }
 
-function attachCheckHandlers(chk, habit, getRecords) {
+function paintCheckbox(chk, count, target) {
+    const done = count >= target;
+    chk.dataset.count = count;
+    chk.dataset.done = done ? '1' : '0';
+    if (done) {
+        chk.dataset.status = 'yes';
+        chk.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+    } else if (count > 0) {
+        chk.dataset.status = '';
+        chk.innerHTML = `<span class="hchk-count">${count}/${target}</span>`;
+    } else {
+        chk.dataset.status = '';
+        chk.innerHTML = '';
+    }
+}
+
+function attachCheckHandlers(chk, habit, getRecords, target) {
     let pressTimer = null;
     let longPressed = false;
 
@@ -42,14 +62,19 @@ function attachCheckHandlers(chk, habit, getRecords) {
         longPressed = false;
         pressTimer = setTimeout(() => {
             longPressed = true;
-            const records = getRecords();
-            const existing = (records || []).find(r => r.day === chk.dataset.date);
-            openNoteEditor({
-                habitId: habit.id,
-                date: chk.dataset.date,
-                existing,
-                onSave: refreshHabits,
-            });
+            // Long press: if target > 1, reset count to 0; else open note editor.
+            if (target > 1) {
+                resetDay(chk, habit);
+            } else {
+                const records = getRecords();
+                const existing = recordFor(records, chk.dataset.date);
+                openNoteEditor({
+                    habitId: habit.id,
+                    date: chk.dataset.date,
+                    existing,
+                    onSave: refreshHabits,
+                });
+            }
         }, 500);
     };
     const endPress = () => clearTimeout(pressTimer);
@@ -62,26 +87,42 @@ function attachCheckHandlers(chk, habit, getRecords) {
 
     chk.addEventListener('click', async () => {
         if (longPressed) return;
-        const cur = chk.dataset.status;
-        const nextDone = cur !== 'yes';
-        chk.dataset.status = nextDone ? 'yes' : '';
-        chk.innerHTML = nextDone
-            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-            : '';
+        const cur = parseInt(chk.dataset.count || '0', 10);
+        let nextCount;
+        if (target === 1) {
+            nextCount = cur >= 1 ? 0 : 1;
+        } else {
+            nextCount = cur >= target ? 0 : cur + 1;
+        }
+        const prev = cur;
+        paintCheckbox(chk, nextCount, target);
         try {
             await api.post(`/api/v1/habits/${habit.id}/completions`, {
-                done: nextDone,
+                count: nextCount,
                 date: chk.dataset.date,
                 date_fmt: '%Y-%m-%d',
             });
         } catch (err) {
-            chk.dataset.status = cur;
-            chk.innerHTML = cur === 'yes'
-                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-                : '';
+            paintCheckbox(chk, prev, target);
             toast(err.message, 'error');
         }
     });
+}
+
+async function resetDay(chk, habit) {
+    const target = parseInt(chk.dataset.target || '1', 10);
+    const prev = parseInt(chk.dataset.count || '0', 10);
+    paintCheckbox(chk, 0, target);
+    try {
+        await api.post(`/api/v1/habits/${habit.id}/completions`, {
+            count: 0,
+            date: chk.dataset.date,
+            date_fmt: '%Y-%m-%d',
+        });
+    } catch (err) {
+        paintCheckbox(chk, prev, target);
+        toast(err.message, 'error');
+    }
 }
 
 async function fetchHabitDetail(habitId) {
@@ -94,34 +135,37 @@ function renderRow(habit) {
     row.className = 'hrow';
     row.dataset.habitId = habit.id;
 
+    const target = habit.target_count || 1;
+
     const icon = document.createElement('div');
     icon.className = 'hicon';
-    icon.textContent = '📌';
+    icon.textContent = habit.icon || '📌';
     icon.title = 'Drag to reorder · Click to view detail';
     icon.addEventListener('click', () => window.location = `/habits/${habit.id}`);
 
     const name = document.createElement('div');
     name.className = 'hname';
-    name.textContent = habit.name;
+    name.textContent = habit.name + (target > 1 ? ` · ${target}×/day` : '');
     name.addEventListener('click', () => window.location = `/habits/${habit.id}`);
 
     const checks = document.createElement('div');
     checks.className = 'hchecks';
 
-    let cachedRecords = habit.records;
+    let cachedRecords = habit.records || [];
     const getRecords = () => cachedRecords;
 
     for (let i = 6; i >= 0; i--) {
         const d = dateNDaysAgo(i);
         const iso = isoDate(d);
-        const cur = statusFromRecords(cachedRecords, iso);
+        const rec = recordFor(cachedRecords, iso);
+        const cnt = rec ? (rec.count ?? (rec.done ? 1 : 0)) : 0;
         const chk = document.createElement('button');
         chk.className = 'hchk';
-        chk.dataset.status = cur;
         chk.dataset.date = iso;
+        chk.dataset.target = target;
         chk.title = iso;
-        if (cur === 'yes') chk.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
-        attachCheckHandlers(chk, habit, getRecords);
+        paintCheckbox(chk, cnt, target);
+        attachCheckHandlers(chk, habit, getRecords, target);
         checks.appendChild(chk);
     }
 
@@ -136,16 +180,34 @@ function renderRow(habit) {
     fetchHabitDetail(habit.id).then(full => {
         if (!full) return;
         cachedRecords = full.records || [];
-        const doneSet = new Set(cachedRecords.filter(r => r.done).map(r => r.day));
+        const recordsByDay = new Map(cachedRecords.map(r => [r.day, r]));
         checks.querySelectorAll('.hchk').forEach(chk => {
-            const iso = chk.dataset.date;
-            const done = doneSet.has(iso);
-            chk.dataset.status = done ? 'yes' : '';
-            chk.innerHTML = done ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '';
+            const r = recordsByDay.get(chk.dataset.date);
+            const cnt = r ? (r.count ?? (r.done ? 1 : 0)) : 0;
+            paintCheckbox(chk, cnt, target);
         });
     });
 
     return row;
+}
+
+// ── Icon grid in modal ───────────────────────────────────────────
+function renderIconGrid(selected) {
+    const g = document.getElementById('iconGrid');
+    if (!g) return;
+    g.innerHTML = '';
+    ICON_PALETTE.forEach(emoji => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = emoji;
+        if (emoji === selected) b.classList.add('on');
+        b.addEventListener('click', () => {
+            document.getElementById('habitIconIn').value = emoji;
+            g.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+            b.classList.add('on');
+        });
+        g.appendChild(b);
+    });
 }
 
 // ── Habit modal (add / edit) ─────────────────────────────────────
@@ -154,7 +216,10 @@ function openHabitModal(habit) {
     document.getElementById('habitModalTitle').textContent = habit ? 'Edit habit' : 'New habit';
     document.getElementById('habitNameIn').value = habit?.name || '';
     document.getElementById('habitTagsIn').value = (habit?.tags || []).join(', ');
+    document.getElementById('habitIconIn').value = habit?.icon || '📌';
+    document.getElementById('habitTargetIn').value = habit?.target_count || 1;
     document.getElementById('habitDeleteBtn').style.visibility = habit ? 'visible' : 'hidden';
+    renderIconGrid(habit?.icon || '📌');
     document.getElementById('habitOv').classList.add('on');
     setTimeout(() => document.getElementById('habitNameIn').focus(), 50);
 }
@@ -167,13 +232,15 @@ window.closeHabitModal = () => {
 async function saveHabitFromModal() {
     const name = document.getElementById('habitNameIn').value.trim();
     const tags = document.getElementById('habitTagsIn').value.split(',').map(s => s.trim()).filter(Boolean);
+    const icon = document.getElementById('habitIconIn').value.trim() || '📌';
+    const target_count = Math.max(1, parseInt(document.getElementById('habitTargetIn').value || '1', 10));
     if (!name) { toast('Name is required', 'error'); return; }
     try {
         if (editingHabitId) {
-            await api.put(`/api/v1/habits/${editingHabitId}`, { name, tags });
+            await api.put(`/api/v1/habits/${editingHabitId}`, { name, tags, icon, target_count });
             toast('Saved');
         } else {
-            await api.post('/api/v1/habits', { name, tags });
+            await api.post('/api/v1/habits', { name, tags, icon, target_count });
             toast('Created');
         }
         closeHabitModal();
@@ -265,8 +332,10 @@ export async function renderHabitDetail() {
 
     try {
         const habit = await api.get(`/api/v1/habits/${habitId}`);
-        document.getElementById('dName').textContent = habit.name;
-        document.getElementById('dMeta').textContent = (habit.tags?.length ? habit.tags.map(t => '#' + t).join(' ') : 'No tags');
+        document.getElementById('dName').textContent = habit.name + (habit.target_count > 1 ? ` · ${habit.target_count}×/day` : '');
+        const meta = (habit.tags?.length ? habit.tags.map(t => '#' + t).join(' ') : 'No tags');
+        document.getElementById('dMeta').textContent = meta;
+        document.getElementById('dIcon').textContent = habit.icon || '📌';
         document.title = `${habit.name} · HabitLab`;
     } catch (e) { toast(e.message, 'error'); return; }
 

@@ -60,6 +60,17 @@ class DictRecord(CheckedRecord, DictStorage):
     def text(self, value: str) -> None:
         self.data["text"] = value
 
+    @property
+    def count(self) -> int:
+        # Legacy records have only `done` (bool); treat done as count=1.
+        if "count" in self.data:
+            return int(self.data["count"])
+        return 1 if self.data.get("done") else 0
+
+    @count.setter
+    def count(self, value: int) -> None:
+        self.data["count"] = max(0, int(value))
+
 
 class HabitDataCache:
     def __init__(self, habit: "DictHabit"):
@@ -108,6 +119,22 @@ class DictHabit(Habit[DictRecord], DictStorage):
     @tags.setter
     def tags(self, value: list[str]) -> None:
         self.data["tags"] = list(value)
+
+    @property
+    def icon(self) -> str:
+        return self.data.get("icon", "📌")
+
+    @icon.setter
+    def icon(self, value: str) -> None:
+        self.data["icon"] = value or "📌"
+
+    @property
+    def target_count(self) -> int:
+        return int(self.data.get("target_count", 1))
+
+    @target_count.setter
+    def target_count(self, value: int) -> None:
+        self.data["target_count"] = max(1, int(value))
 
     @property
     def star(self) -> bool:
@@ -187,31 +214,47 @@ class DictHabit(Habit[DictRecord], DictStorage):
         return self.cache.ticked_data
 
     async def tick(
-        self, day: datetime.date, done: bool, text: str | None = None
+        self,
+        day: datetime.date,
+        done: bool | None = None,
+        text: str | None = None,
+        count: int | None = None,
     ) -> CheckedRecord:
-        # Find the record in the cache
+        # Resolve target count for "done" semantics.
+        target = self.target_count
+
+        # Compute the effective new count for this day.
         record = self.ticked_data.get(day)
+        if count is None:
+            if done is True:
+                new_count = target
+            elif done is False:
+                new_count = 0
+            else:
+                new_count = record.count if record is not None else 0
+        else:
+            new_count = max(0, int(count))
+
+        if "records" not in self.data:
+            self.data["records"] = []
 
         if record is not None:
-            # Update only if necessary to avoid unnecessary writes
-            new_data = {}
-            if record.done != done:
-                new_data["done"] = done
-            if text is not None and record.text != text:
-                new_data["text"] = text
-            if new_data:
-                record.data.update(new_data)
-
+            # Update existing in-place
+            record.data["count"] = new_count
+            record.data["done"] = new_count >= target
+            if text is not None:
+                record.data["text"] = text
         else:
-            # Update storage once
-            data = {"day": day.strftime(DAY_MASK), "done": done}
+            data = {
+                "day": day.strftime(DAY_MASK),
+                "count": new_count,
+                "done": new_count >= target,
+            }
             if text is not None:
                 data["text"] = text
             self.data["records"].append(data)
 
-        # Update the cache
         self.cache.refresh()
-
         return self.ticked_data[day]
 
     async def merge(self, other: "DictHabit") -> None:
