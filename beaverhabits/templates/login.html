@@ -72,8 +72,15 @@
                 body: JSON.stringify({ password: pw }),
             });
             if (!setup.ok) {
-                const body = await setup.json().catch(() => ({}));
-                err.textContent = body.detail || 'Setup failed';
+                const body = await setup.json().catch(() => null);
+                if (body && typeof body.detail === 'string') {
+                    err.textContent = body.detail;
+                } else if (body) {
+                    err.textContent = `Setup failed (${setup.status}): ${JSON.stringify(body).slice(0, 200)}`;
+                } else {
+                    err.textContent = `Setup failed (${setup.status})`;
+                }
+                console.error('setup error', setup.status, body);
                 return;
             }
         }
