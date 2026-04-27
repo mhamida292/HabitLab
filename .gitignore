@@ -155,6 +155,7 @@ cython_debug/
 test.db
 .idea/
 .user/
+.superpowers/
 screenshots/
 tags
 .env
