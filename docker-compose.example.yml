@@ -1,0 +1,13 @@
+services:
+  beaverhabits:
+    image: beaverhabits:latest
+    build: .
+    container_name: beaverhabits
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/data
+    environment:
+      - SECRET_KEY=change-me-to-a-long-random-string
+      - TIME_ZONE=UTC
