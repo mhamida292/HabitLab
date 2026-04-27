@@ -3,11 +3,9 @@ import gc
 import hashlib
 import os
 import re
-import smtplib
 import time
 import tracemalloc
 from collections import Counter
-from email.mime.text import MIMEText
 from functools import wraps
 from typing import Literal, TypeAlias
 
@@ -165,19 +163,6 @@ def timeit(threshold: float):
 
     return decorator
 
-
-def send_email(subject: str, body: str, recipients: list[str]):
-    sender = settings.SMTP_EMAIL_USERNAME
-    password = settings.SMTP_EMAIL_PASSWORD
-
-    msg = MIMEText(body or subject)
-    msg["Subject"] = subject
-    msg["From"] = sender
-    msg["To"] = ", ".join(recipients)
-
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp_server:
-        smtp_server.login(sender, password)
-        smtp_server.sendmail(sender, recipients, msg.as_string())
 
 
 class MemoryMonitor:

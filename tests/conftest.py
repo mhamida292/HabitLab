@@ -1,1 +1,1 @@
-pytest_plugins = ["nicegui.testing.plugin"]
+# conftest.py — NiceGUI plugin removed; no extra plugins needed.

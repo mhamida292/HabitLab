@@ -4,9 +4,8 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security.utils import get_authorization_scheme_param
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from beaverhabits import views
 from beaverhabits.app.auth import (
-    user_from_reset_token,
+    user_create,
     user_from_token,
     user_get_by_email,
 )
@@ -57,8 +56,8 @@ async def current_active_user(
         logger.info(f"Trusted local email: {trusted_local_email}")
         if user := await user_get_by_email(trusted_local_email):
             return user
-        logger.info(f"Trusted local email user not found. Creating user.")
-        user = await views.register_user(trusted_local_email)
+        logger.info("Trusted local email user not found. Creating user.")
+        user = await user_create(trusted_local_email, password="", is_superuser=True)
         return user
 
     if credentials and (user := await user_from_token(credentials)):
@@ -79,7 +78,7 @@ async def current_active_user(
 async def current_admin_user(
     user: Annotated[User, Depends(current_active_user)],
 ) -> User:
-    if user.email != settings.ADMIN_EMAIL:
+    if not user.is_superuser:
         logger.warning(
             f"User {user.email} tried to access admin endpoint without admin privileges."
         )
@@ -89,14 +88,3 @@ async def current_admin_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
-
-
-async def get_reset_user(request: Request) -> User:
-    token = request.query_params.get("token")
-    if not token:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Token not found",
-        )
-
-    return await user_from_reset_token(token)
