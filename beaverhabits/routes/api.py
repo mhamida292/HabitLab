@@ -5,10 +5,11 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 from beaverhabits.logger import logger
 from pydantic import BaseModel
 
-from beaverhabits import views
 from beaverhabits.app.db import User
 from beaverhabits.app.dependencies import current_active_user
 from beaverhabits.core.completions import CStatus, get_habit_date_completion
+from beaverhabits.storage import get_user_dict_storage
+from beaverhabits.storage.dict import DictHabitList
 from beaverhabits.storage.storage import (
     Habit,
     HabitFrequency,
@@ -19,12 +20,32 @@ from beaverhabits.storage.storage import (
 
 api_router = APIRouter()
 
+_storage = get_user_dict_storage()
+
+
+async def _get_or_create_habit_list(user: User) -> HabitList:
+    """Return the user's habit list, auto-creating it if it doesn't exist yet."""
+    try:
+        return await _storage.get_user_habit_list(user)
+    except Exception:
+        pass
+
+    # First visit — create an empty habit list
+    empty = DictHabitList({"habits": []})
+    await _storage.init_user_habit_list(user, empty)
+    return await _storage.get_user_habit_list(user)
+
 
 async def current_habit_list(user: User = Depends(current_active_user)) -> HabitList:
-    habit_list = await views.get_user_habit_list(user)
-    if not habit_list:
-        raise HTTPException(status_code=404, detail="No habits found")
-    return habit_list
+    return await _get_or_create_habit_list(user)
+
+
+async def _get_user_habit(user: User, habit_id: str) -> Habit:
+    habit_list = await _get_or_create_habit_list(user)
+    habit = await habit_list.get_habit_by(habit_id)
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    return habit
 
 
 class HabitListMeta(BaseModel):
@@ -66,9 +87,7 @@ async def post_habits(
     habit: CreateHabit,
     user: User = Depends(current_active_user),
 ):
-    habit_list = await views.get_or_create_user_habit_list(
-        user, views.dummy_empty_habit_list()
-    )
+    habit_list = await _get_or_create_habit_list(user)
 
     id = await habit_list.add(habit.name)
     logger.info(f"Created new habit {id} for user {user.email}")
@@ -81,7 +100,7 @@ async def get_habit_detail(
     habit_id: str,
     user: User = Depends(current_active_user),
 ):
-    habit = await views.get_user_habit(user, habit_id)
+    habit = await _get_user_habit(user, habit_id)
     return format_json_response(habit)
 
 
@@ -104,7 +123,7 @@ async def put_habit(
     habit: UpdateHabit,
     user: User = Depends(current_active_user),
 ):
-    existing_habit = await views.get_user_habit(user, habit_id)
+    existing_habit = await _get_user_habit(user, habit_id)
     if habit.name is not None:
         existing_habit.name = habit.name
     if habit.star is not None:
@@ -128,8 +147,9 @@ async def delete_habit(
     habit_id: str,
     user: User = Depends(current_active_user),
 ):
-    habit = await views.get_user_habit(user, habit_id)
-    await views.remove_user_habit(user, habit)
+    habit_list = await _get_or_create_habit_list(user)
+    habit = await _get_user_habit(user, habit_id)
+    await habit_list.remove(habit)
     return format_json_response(habit)
 
 
@@ -171,7 +191,7 @@ async def get_habit_completions(
             except KeyError:
                 raise HTTPException(status_code=400, detail=f"Invalid status: {s}")
 
-    habit = await views.get_user_habit(user, habit_id)
+    habit = await _get_user_habit(user, habit_id)
     status_map = get_habit_date_completion(habit, start, end)
     ticked_days = [
         day
@@ -207,7 +227,7 @@ async def put_habit_completions(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format")
 
-    habit = await views.get_user_habit(user, habit_id)
+    habit = await _get_user_habit(user, habit_id)
     await habit.tick(day, tick.done, tick.text)
     return {"day": day.strftime(tick.date_fmt), "done": tick.done}
 
