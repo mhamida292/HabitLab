@@ -4,9 +4,24 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 function isoDate(d) { return d.toISOString().slice(0, 10); }
 
+function paintHmCell(cell, count, target) {
+    cell.classList.remove('l1', 'l2', 'l3', 'l4');
+    cell.dataset.count = count;
+    cell.innerHTML = '';
+    if (count <= 0) return;
+    const ratio = Math.min(1, count / target);
+    let level = 1;
+    if (ratio >= 1) level = 4;
+    else if (ratio >= 0.66) level = 3;
+    else if (ratio >= 0.33) level = 2;
+    cell.classList.add(`l${level}`);
+    if (target > 1) {
+        cell.innerHTML = `<span class="hm-count">${count}/${target}</span>`;
+    }
+}
+
 // Render a clickable week-column heatmap with month + day-of-week labels.
-// `host` should be the wrapper element returned by createHeatmapWrap().
-export function renderSingleHeatmap(host, days, weeks = 26, habitId = null) {
+export function renderSingleHeatmap(host, days, weeks = 26, habitId = null, target = 1) {
     const grid = host.querySelector('.heatmap');
     const monthsEl = host.querySelector('.hm-months');
     grid.innerHTML = '';
@@ -14,10 +29,9 @@ export function renderSingleHeatmap(host, days, weeks = 26, habitId = null) {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const doneSet = new Set(days.filter(d => d.done).map(d => d.date));
+    const countByDay = new Map(days.map(d => [d.date, d.count ?? (d.done ? target : 0)]));
 
-    // Anchor on Monday so each column is a full Mon..Sun week.
-    const todayDow = (today.getDay() + 6) % 7; // 0=Mon..6=Sun
+    const todayDow = (today.getDay() + 6) % 7;
     const lastMonday = new Date(today);
     lastMonday.setDate(lastMonday.getDate() - todayDow);
     const start = new Date(lastMonday);
@@ -31,16 +45,18 @@ export function renderSingleHeatmap(host, days, weeks = 26, habitId = null) {
             d.setDate(start.getDate() + col * 7 + row);
             const iso = isoDate(d);
             const isFuture = d > today;
+            const cnt = countByDay.get(iso) || 0;
 
             const cell = document.createElement('div');
             cell.className = 'hm-cell';
             cell.dataset.date = iso;
-            cell.dataset.done = doneSet.has(iso) ? '1' : '0';
-            if (doneSet.has(iso)) cell.classList.add('l3');
+            cell.dataset.target = target;
+            paintHmCell(cell, cnt, target);
             if (isFuture) cell.classList.add('future');
-            cell.title = `${iso}${doneSet.has(iso) ? ' ✓' : ''}`;
+            cell.title = `${iso}${cnt ? ` · ${cnt}/${target}` : ''}`;
             if (!isFuture && habitId) {
-                cell.addEventListener('click', () => toggleCell(cell, habitId));
+                cell.addEventListener('click', () => stepCell(cell, habitId, target));
+                cell.addEventListener('contextmenu', (e) => { e.preventDefault(); resetCell(cell, habitId, target); });
             }
             grid.appendChild(cell);
             colCells.push({ cell, date: d });
@@ -48,7 +64,6 @@ export function renderSingleHeatmap(host, days, weeks = 26, habitId = null) {
         cellsByCol.push(colCells);
     }
 
-    // Month labels above the grid: one label per column where a new month begins.
     let lastMonthShown = -1;
     for (let col = 0; col < weeks; col++) {
         const firstOfCol = cellsByCol[col][0].date;
@@ -77,22 +92,42 @@ async function refreshDetailStats(habitId) {
     } catch { /* leave stale */ }
 }
 
-async function toggleCell(cell, habitId) {
-    const wasDone = cell.dataset.done === '1';
-    const nextDone = !wasDone;
-    cell.dataset.done = nextDone ? '1' : '0';
-    cell.classList.toggle('l3', nextDone);
-    cell.title = `${cell.dataset.date}${nextDone ? ' ✓' : ''}`;
+async function stepCell(cell, habitId, target) {
+    const cur = parseInt(cell.dataset.count || '0', 10);
+    let next;
+    if (target === 1) {
+        next = cur >= 1 ? 0 : 1;
+    } else {
+        next = cur >= target ? 0 : cur + 1;
+    }
+    const prev = cur;
+    paintHmCell(cell, next, target);
+    cell.title = `${cell.dataset.date}${next ? ` · ${next}/${target}` : ''}`;
     try {
         await api.post(`/api/v1/habits/${habitId}/completions`, {
-            done: nextDone,
+            count: next,
             date: cell.dataset.date,
             date_fmt: '%Y-%m-%d',
         });
         await refreshDetailStats(habitId);
     } catch (err) {
-        cell.dataset.done = wasDone ? '1' : '0';
-        cell.classList.toggle('l3', wasDone);
+        paintHmCell(cell, prev, target);
+        toast(err.message, 'error');
+    }
+}
+
+async function resetCell(cell, habitId, target) {
+    const prev = parseInt(cell.dataset.count || '0', 10);
+    paintHmCell(cell, 0, target);
+    try {
+        await api.post(`/api/v1/habits/${habitId}/completions`, {
+            count: 0,
+            date: cell.dataset.date,
+            date_fmt: '%Y-%m-%d',
+        });
+        await refreshDetailStats(habitId);
+    } catch (err) {
+        paintHmCell(cell, prev, target);
         toast(err.message, 'error');
     }
 }
