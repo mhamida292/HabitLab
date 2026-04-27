@@ -148,10 +148,12 @@ button,input,textarea,select{font-family:var(--sans)}
 .cal-day.done .cal-count { color: rgba(255,255,255,0.85); }
 
 @media (max-width: 768px) {
-    .cal { max-width: none; padding: 0 4px; }
-    .cal-day { font-size: 12px; }
+    .cal { max-width: 320px; padding: 0; }
+    .cal-grid { gap: 2px; }
+    .cal-dows { gap: 2px; padding: 0 0 4px; }
+    .cal-day { font-size: 11px; border-radius: 4px; }
     .cal-dows { font-size: 8px; }
-    .cal-count { font-size: 7px; }
+    .cal-count { font-size: 7px; bottom: 1px; right: 2px; }
 }
 
 /* ── Toast + shade ─────────────────────────────────────────── */
