@@ -1,4 +1,4 @@
-# BeaverHabits
+# HabitLab
 
 A self-hosted habit tracker. One Docker container, one master password, vanilla web UI.
 

@@ -13,7 +13,7 @@ from beaverhabits.routes.api import init_api_routes
 from beaverhabits.routes.metrics import init_metrics_routes
 from beaverhabits.routes.pages import init_page_routes
 
-logger.info("Starting BeaverHabits...")
+logger.info("Starting HabitLab...")
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 STATIC_DIR = PROJECT_ROOT / "static"

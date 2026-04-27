@@ -272,7 +272,7 @@ export async function renderHabitDetail() {
         const habit = await api.get(`/api/v1/habits/${habitId}`);
         document.getElementById('dName').textContent = habit.name;
         document.getElementById('dMeta').textContent = (habit.tags?.length ? habit.tags.map(t => '#' + t).join(' ') : 'No tags');
-        document.title = `${habit.name} · BeaverHabits`;
+        document.title = `${habit.name} · HabitLab`;
     } catch (e) { toast(e.message, 'error'); return; }
 
     try {

@@ -41,7 +41,7 @@ button,input,textarea,select{font-family:var(--sans)}
 .app{display:none;height:100dvh;position:relative} .app.active{display:flex}
 .sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;z-index:50;transition:background .3s,border-color .3s}
 .s-head{height:64px;padding:0 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:radial-gradient(ellipse 200% 160% at 0% 0%,var(--accent-glow2),var(--accent-glow) 50%,transparent)}
-.s-brand{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:8px}
+.s-brand{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
 .s-actions{display:flex;gap:6px}
 .ibtn{background:none;border:1px solid var(--border);color:var(--text-muted);width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;transition:all .15s}
 .ibtn:hover{border-color:var(--border-hover);color:var(--text-dim)} .ibtn.dng:hover{border-color:var(--danger);color:var(--danger)}

@@ -54,7 +54,7 @@ export async function renderMultiYearHeatmap() {
         const habit = await api.get(`/api/v1/habits/${habitId}`);
         const nameEl = document.getElementById('myName');
         if (nameEl) nameEl.textContent = habit.name;
-        document.title = `${habit.name} multi-year · BeaverHabits`;
+        document.title = `${habit.name} multi-year · HabitLab`;
     } catch { /* keep placeholder */ }
 
     const data = await api.get(`/api/v1/habits/${habitId}/heatmap?years=5`);
