@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Stats · BeaverHabits{% endblock %}
+
+{% block sidebar %}
+<div class="s-label">Navigation</div>
+<ul class="flist">
+    <li class="fi-item" onclick="window.location='/'"><div class="fn">← Back to habits</div></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div style="padding:16px;overflow-y:auto">
+    <h1 style="font-size:18px;margin-bottom:14px">Overall stats</h1>
+    <div id="statsRoot">Loading…</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    import { api } from '/static/js/api.js';
+    const root = document.getElementById('statsRoot');
+    try {
+        const habits = await api.get('/api/v1/habits');
+        root.innerHTML = `<p style="color:var(--text-dim)">${habits.length} active habit${habits.length !== 1 ? 's' : ''}.</p>`;
+    } catch (e) {
+        root.innerHTML = `<p style="color:var(--danger)">Could not load stats: ${e.message}</p>`;
+    }
+</script>
+{% endblock %}

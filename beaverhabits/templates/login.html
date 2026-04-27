@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>{% if setup_required %}Setup{% else %}Login{% endif %} · BeaverHabits</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/styles.css">
+<script>
+    (function () {
+        var saved = localStorage.getItem('theme') || 'midnight';
+        document.documentElement.setAttribute('data-theme', saved);
+    })();
+</script>
+</head>
+<body data-theme="midnight">
+
+<div class="auth-screen">
+    <div class="auth-bg"></div>
+    <div class="auth-box">
+        <div class="auth-hex">⬡</div>
+        <div class="auth-logo">BeaverHabits</div>
+        <div class="auth-sub">
+            {% if setup_required %}Create your master password{% else %}Enter master password{% endif %}
+        </div>
+
+        <form id="authForm">
+            <div class="auth-field">
+                <input type="password" id="passwordIn" placeholder="Master password" autofocus required minlength="8">
+            </div>
+            {% if setup_required %}
+            <div class="auth-field">
+                <input type="password" id="confirmIn" placeholder="Confirm password" required minlength="8">
+            </div>
+            {% endif %}
+            <button type="submit" class="auth-btn">
+                {% if setup_required %}Create Vault{% else %}Unlock{% endif %}
+            </button>
+        </form>
+        <div class="auth-error" id="authErr"></div>
+    </div>
+</div>
+
+<script>
+    const setupRequired = {{ 'true' if setup_required else 'false' }};
+
+    async function login(password) {
+        const resp = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'username=admin@local&password=' + encodeURIComponent(password),
+        });
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        return data.access_token;
+    }
+
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const pw = document.getElementById('passwordIn').value;
+        const err = document.getElementById('authErr');
+        err.textContent = '';
+
+        if (setupRequired) {
+            const confirm = document.getElementById('confirmIn').value;
+            if (pw !== confirm) { err.textContent = 'Passwords do not match'; return; }
+
+            const setup = await fetch('/auth/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pw }),
+            });
+            if (!setup.ok) {
+                const body = await setup.json().catch(() => ({}));
+                err.textContent = body.detail || 'Setup failed';
+                return;
+            }
+        }
+
+        const token = await login(pw);
+        if (!token) { err.textContent = 'Wrong password'; return; }
+        localStorage.setItem('jwt', token);
+        window.location.href = '/';
+    });
+</script>
+</body>
+</html>

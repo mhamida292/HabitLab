@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>{% block title %}BeaverHabits{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#07080a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/styles.css">
+<script>
+    (function () {
+        var saved = localStorage.getItem('theme') || 'midnight';
+        document.documentElement.setAttribute('data-theme', saved);
+    })();
+</script>
+</head>
+<body data-theme="midnight">
+
+<div class="shade" id="shade" onclick="closeSidebar()"></div>
+
+<div class="app active">
+    <aside class="sidebar" id="sidebar">
+        <div class="s-head">
+            <div class="s-brand">⬡ BeaverHabits</div>
+            <div class="s-actions">
+                <button class="ibtn" id="themeToggle" title="Toggle theme">☾</button>
+                <button class="ibtn" onclick="openSettings()" title="Settings">⚙</button>
+                <button class="ibtn dng" onclick="logout()" title="Lock">🔒</button>
+            </div>
+        </div>
+        {% block sidebar %}{% endblock %}
+    </aside>
+
+    <div class="main">
+        <div class="toolbar">
+            <button class="mmenu" onclick="openSidebar()">☰</button>
+            {% block toolbar %}{% endblock %}
+        </div>
+        {% block content %}{% endblock %}
+    </div>
+</div>
+
+{% include "_settings_modal.html" %}
+{% include "_note_modal.html" %}
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="/static/js/api.js"></script>
+<script type="module" src="/static/js/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

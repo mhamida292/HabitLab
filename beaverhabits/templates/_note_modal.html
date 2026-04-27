@@ -1,0 +1,30 @@
+<div class="ov" id="noteOv">
+    <div class="modal">
+        <div class="mh">
+            <div class="mt">Note</div>
+            <button class="mx" onclick="closeNote()">&times;</button>
+        </div>
+        <div class="mb">
+            <div class="fg">
+                <label class="fl">Date</label>
+                <input class="finp" id="noteDate" readonly>
+            </div>
+            <div class="fg">
+                <label class="fl">Note</label>
+                <textarea class="fta" id="noteText" placeholder="What happened…"></textarea>
+            </div>
+            <div class="fg">
+                <label class="fl">Image (optional)</label>
+                <input type="file" id="noteImage" accept="image/png,image/jpeg,image/webp,image/gif">
+                <div id="noteImagePreview" style="margin-top:8px"></div>
+            </div>
+        </div>
+        <div class="mf">
+            <button class="bdng" id="noteDelete">Delete</button>
+            <div style="display:flex;gap:8px">
+                <button class="bgho" onclick="closeNote()">Cancel</button>
+                <button class="bpri" id="noteSave">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
