@@ -151,11 +151,11 @@ button,input,textarea,select{font-family:var(--sans)}
 .cal-day.done .cal-count { color: rgba(255,255,255,0.85); }
 
 @media (max-width: 768px) {
-    .cal { max-width: 320px; padding: 0; }
-    .cal-grid { gap: 2px; }
-    .cal-dows { gap: 2px; padding: 0 0 4px; }
-    .cal-day { font-size: 11px; border-radius: 4px; }
-    .cal-dows { font-size: 8px; }
+    .cal { max-width: 100%; padding: 0; }
+    .cal-head, .cal-dows, .cal-grid { max-width: 320px; margin-left: auto; margin-right: auto; }
+    .cal-grid { gap: 3px; padding: 0; }
+    .cal-dows { gap: 3px; padding: 0 0 4px; font-size: 8px; }
+    .cal-day { font-size: 11px; border-radius: 5px; max-width: 44px; max-height: 44px; }
     .cal-count { font-size: 7px; bottom: 1px; right: 2px; }
 }
 
