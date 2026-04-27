@@ -67,7 +67,10 @@ button,input,textarea,select{font-family:var(--sans)}
 .t-brand:hover{color:var(--accent-hover)}
 .t-brand-text{font-size:11px}
 .t-mid{flex:1;display:flex;align-items:center;gap:10px;min-width:0}
-.t-actions{display:flex;gap:6px;flex-shrink:0;padding-left:6px;border-left:1px solid var(--border);margin-left:6px}
+
+.sidebar-content{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+.sidebar-footer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.sidebar-footer .ibtn{flex:1;height:36px;width:auto}
 .sbox{flex:1;position:relative}
 .sbox svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-muted);width:16px;height:16px;pointer-events:none}
 .sinput{width:100%;padding:11px 14px 11px 40px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-size:13px;outline:none;transition:all .2s}
@@ -224,10 +227,6 @@ button,input,textarea,select{font-family:var(--sans)}
     .hicon{width:36px;height:36px;font-size:15px}
     .hchk{width:22px;height:22px}
 
-    /* Hide brand text on tight screens — keep the hex icon */
-    .t-brand-text { display: none; }
-    .t-actions { padding-left: 4px; margin-left: 0; border-left: none; }
-    .t-actions .ibtn { width: 30px; height: 30px; font-size: 13px; }
     .toolbar { padding: 10px 12px; gap: 6px; }
 
     /* Detail page heatmap: tighten everything on phones */

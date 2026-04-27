@@ -29,7 +29,14 @@
 
 <div class="app active">
     <aside class="sidebar" id="sidebar">
-        {% block sidebar %}{% endblock %}
+        <div class="sidebar-content">
+            {% block sidebar %}{% endblock %}
+        </div>
+        <div class="sidebar-footer">
+            <button class="ibtn" id="themeToggle" title="Toggle theme">☾</button>
+            <button class="ibtn" onclick="openSettings()" title="Settings">⚙</button>
+            <button class="ibtn dng" onclick="logout()" title="Lock">🔒</button>
+        </div>
     </aside>
 
     <div class="main">
@@ -37,11 +44,6 @@
             <button class="mmenu" onclick="openSidebar()">☰</button>
             <a href="/" class="t-brand"><img src="/static/logo-mark.svg" alt="" width="22" height="22"> <span class="t-brand-text">HabitLab</span></a>
             <div class="t-mid">{% block toolbar %}{% endblock %}</div>
-            <div class="t-actions">
-                <button class="ibtn" id="themeToggle" title="Toggle theme">☾</button>
-                <button class="ibtn" onclick="openSettings()" title="Settings">⚙</button>
-                <button class="ibtn dng" onclick="logout()" title="Lock">🔒</button>
-            </div>
         </div>
         {% block content %}{% endblock %}
     </div>
