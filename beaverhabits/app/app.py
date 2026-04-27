@@ -47,7 +47,7 @@ def init_auth_routes(app: FastAPI) -> None:
         if not await _setup_required(session):
             raise HTTPException(status_code=409, detail="Setup already completed")
         try:
-            create = UserCreate(email="admin@beaverhabits.local", password=body.password)
+            create = UserCreate(email="admin@beaverhabits.app", password=body.password)
             user = await user_manager.create(create)
             return {"id": str(user.id), "email": user.email}
         except Exception as exc:
