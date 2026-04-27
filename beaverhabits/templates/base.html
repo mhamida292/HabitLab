@@ -7,8 +7,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>{% block title %}HabitLab{% endblock %}</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#07080a">
+<meta name="theme-color" content="#7c3aed">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -32,7 +35,7 @@
     <div class="main">
         <div class="toolbar">
             <button class="mmenu" onclick="openSidebar()">☰</button>
-            <a href="/" class="t-brand">⬡ <span class="t-brand-text">HabitLab</span></a>
+            <a href="/" class="t-brand"><img src="/static/logo-mark.svg" alt="" width="22" height="22"> <span class="t-brand-text">HabitLab</span></a>
             <div class="t-mid">{% block toolbar %}{% endblock %}</div>
             <div class="t-actions">
                 <button class="ibtn" id="themeToggle" title="Toggle theme">☾</button>

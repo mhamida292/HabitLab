@@ -1,20 +1,20 @@
 [data-theme="midnight"] {
-    --bg: #07080a; --surface: #0e1015; --surface2: #151820; --surface3: #1c2029;
-    --border: #232733; --border-hover: #333846;
-    --text: #d4d7e0; --text-dim: #7b819a; --text-muted: #4e5370;
-    --accent: #6c8cff; --accent-hover: #8da6ff; --accent-dim: #3d5abf;
-    --accent-glow: rgba(108,140,255,0.1); --accent-glow2: rgba(108,140,255,0.18);
+    --bg: #0a080e; --surface: #110e18; --surface2: #191522; --surface3: #211c2c;
+    --border: #2a2440; --border-hover: #3a3258;
+    --text: #d4cee0; --text-dim: #8a80a4; --text-muted: #5e5478;
+    --accent: #8b5cf6; --accent-hover: #a78bfa; --accent-dim: #7c3aed;
+    --accent-glow: rgba(139,92,246,0.10); --accent-glow2: rgba(139,92,246,0.20);
     --danger: #ff5c6a; --danger-dim: #992e36; --success: #3dd68c;
-    --card-hover: rgba(108,140,255,0.04); --modal-bg: rgba(4,5,8,0.85);
+    --card-hover: rgba(139,92,246,0.05); --modal-bg: rgba(5,4,8,0.85);
 }
 [data-theme="arctic"] {
-    --bg: #f4f6f9; --surface: #ffffff; --surface2: #edf0f5; --surface3: #e3e7ee;
-    --border: #d1d7e2; --border-hover: #b8c0cf;
-    --text: #1a1f2e; --text-dim: #5c6478; --text-muted: #8b93a5;
-    --accent: #2563eb; --accent-hover: #3b82f6; --accent-dim: #1d4ed8;
-    --accent-glow: rgba(37,99,235,0.08); --accent-glow2: rgba(37,99,235,0.14);
+    --bg: #f5f3fa; --surface: #ffffff; --surface2: #ece8f5; --surface3: #ddd6ee;
+    --border: #d1c8e2; --border-hover: #b8acd0;
+    --text: #1e1a2e; --text-dim: #5c5478; --text-muted: #8b83a5;
+    --accent: #7c3aed; --accent-hover: #8b5cf6; --accent-dim: #6d28d9;
+    --accent-glow: rgba(124,58,237,0.08); --accent-glow2: rgba(124,58,237,0.16);
     --danger: #dc2626; --danger-dim: #991b1b; --success: #16a34a;
-    --card-hover: rgba(37,99,235,0.03); --modal-bg: rgba(220,225,235,0.75);
+    --card-hover: rgba(124,58,237,0.04); --modal-bg: rgba(225,220,238,0.75);
 }
 :root { --r: 10px; --rl: 14px; --mono: 'JetBrains Mono',monospace; --sans: 'DM Sans',-apple-system,sans-serif; }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
