@@ -156,6 +156,8 @@ test.db
 .idea/
 .user/
 .superpowers/
+data/
+docker-compose.yml
 screenshots/
 tags
 .env
