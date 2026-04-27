@@ -43,11 +43,16 @@ def init_auth_routes(app: FastAPI) -> None:
         session: AsyncSession = Depends(get_async_session),
         user_manager: UserManager = Depends(get_user_manager),
     ):
+        from beaverhabits.logger import logger
         if not await _setup_required(session):
             raise HTTPException(status_code=409, detail="Setup already completed")
-        create = UserCreate(email="admin@beaverhabits.local", password=body.password)
-        user = await user_manager.create(create)
-        return {"id": str(user.id), "email": user.email}
+        try:
+            create = UserCreate(email="admin@beaverhabits.local", password=body.password)
+            user = await user_manager.create(create)
+            return {"id": str(user.id), "email": user.email}
+        except Exception as exc:
+            logger.exception("auth_setup failed")
+            raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}")
 
     class ChangePasswordBody(BaseModel):
         current_password: str = Field(min_length=1)

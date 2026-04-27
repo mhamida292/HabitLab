@@ -11,6 +11,7 @@ COPY --from=builder /app/.venv ./.venv
 COPY beaverhabits ./beaverhabits
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
 ENV DATA_DIR=/data
 EXPOSE 8765
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://localhost:8765/health || exit 1
