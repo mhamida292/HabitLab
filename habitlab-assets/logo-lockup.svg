@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 32" width="200" height="32">
+  <g transform="translate(0 4)">
+    <rect x="0" y="0" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="7" y="0" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="14" y="0" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="0" y="7" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="7" y="7" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="14" y="7" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="0" y="14" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="7" y="14" width="5" height="5" rx="0.8" fill="#7c3aed"></rect>
+    <rect x="14" y="14" width="5" height="5" rx="0.8" fill="none" stroke="#7c3aed" stroke-width="1.2"></rect>
+    <circle cx="16.5" cy="16.5" r="1.4" fill="#7c3aed"></circle>
+  </g>
+  <text x="32" y="22" font-family="JetBrains Mono, monospace" font-weight="500" font-size="14" letter-spacing="2.4" fill="#7c3aed">HABITLAB</text>
+</svg>
