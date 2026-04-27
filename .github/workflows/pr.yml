@@ -1,6 +1,0 @@
-name: Pull Request Test Workflow
-on: [pull_request]
-
-jobs:
-  test:
-    uses: ./.github/workflows/pre-deployment-test.yml
