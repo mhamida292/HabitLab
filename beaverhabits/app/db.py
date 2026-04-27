@@ -37,9 +37,6 @@ class User(TimestampMixin, SQLAlchemyBaseUserTableUUID, Base):
     habit_list: Mapped["HabitListModel"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-    configs: Mapped["UserConfigsModel"] = relationship(
-        back_populates="user", uselist=False, cascade="all, delete-orphan"
-    )
     note_images: Mapped["UserNoteImageModel"] = relationship(
         back_populates="user", uselist=True, cascade="all, delete-orphan"
     )
@@ -53,31 +50,6 @@ class HabitListModel(TimestampMixin, Base):
 
     user_id = mapped_column(GUID, ForeignKey("user.id"), index=True)
     user = relationship("User", back_populates="habit_list")
-
-
-class UserIdentityModel(TimestampMixin, Base):
-    __tablename__ = "customer"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    email: Mapped[str] = mapped_column(index=True, unique=True)
-    customer_id: Mapped[str] = mapped_column(index=True, unique=True)
-    provider: Mapped[str] = mapped_column(index=True)
-    activated: Mapped[bool] = mapped_column(default=False)
-    data: Mapped[dict] = mapped_column(JSON, nullable=False)
-
-    def __str__(self) -> str:
-        return f"{self.email}<{self.customer_id}> ({self.provider})"
-
-
-class UserConfigsModel(TimestampMixin, Base):
-    __tablename__ = "user_configs"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id = mapped_column(GUID, ForeignKey("user.id"), index=True)
-    user = relationship("User", back_populates="configs")
-
-    # Example config field
-    config_data: Mapped[dict] = mapped_column(JSON, nullable=False)
 
 
 class UserNoteImageModel(TimestampMixin, Base):
