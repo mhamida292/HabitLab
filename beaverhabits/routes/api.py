@@ -69,10 +69,12 @@ async def get_habits_meta(
 @api_router.put("/habits/meta", tags=["habits"])
 async def put_habits_meta(
     meta: HabitListMeta,
-    habit_list: HabitList = Depends(current_habit_list),
+    user: User = Depends(current_active_user),
 ):
+    habit_list = await _get_or_create_habit_list(user)
     if meta.order is not None:
         habit_list.order = meta.order
+    await _storage.save_user_habit_list(user, habit_list)
     return {"order": habit_list.order}
 
 
@@ -105,6 +107,7 @@ async def post_habits(
         if created is not None:
             created.tags = habit.tags
 
+    await _storage.save_user_habit_list(user, habit_list)
     return {"id": id, "name": habit.name, "tags": habit.tags or []}
 
 
@@ -136,7 +139,10 @@ async def put_habit(
     habit: UpdateHabit,
     user: User = Depends(current_active_user),
 ):
-    existing_habit = await _get_user_habit(user, habit_id)
+    habit_list = await _get_or_create_habit_list(user)
+    existing_habit = await habit_list.get_habit_by(habit_id)
+    if existing_habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
     if habit.name is not None:
         existing_habit.name = habit.name
     if habit.star is not None:
@@ -152,6 +158,7 @@ async def put_habit(
     if habit.tags is not None:
         existing_habit.tags = habit.tags
 
+    await _storage.save_user_habit_list(user, habit_list)
     return format_json_response(existing_habit)
 
 
@@ -161,8 +168,11 @@ async def delete_habit(
     user: User = Depends(current_active_user),
 ):
     habit_list = await _get_or_create_habit_list(user)
-    habit = await _get_user_habit(user, habit_id)
+    habit = await habit_list.get_habit_by(habit_id)
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
     await habit_list.remove(habit)
+    await _storage.save_user_habit_list(user, habit_list)
     return format_json_response(habit)
 
 
@@ -240,8 +250,12 @@ async def put_habit_completions(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format")
 
-    habit = await _get_user_habit(user, habit_id)
+    habit_list = await _get_or_create_habit_list(user)
+    habit = await habit_list.get_habit_by(habit_id)
+    if habit is None:
+        raise HTTPException(status_code=404, detail="Habit not found")
     await habit.tick(day, tick.done, tick.text)
+    await _storage.save_user_habit_list(user, habit_list)
     return {"day": day.strftime(tick.date_fmt), "done": tick.done}
 
 
@@ -362,6 +376,7 @@ async def import_data(
         raise HTTPException(status_code=400, detail="Payload missing 'habits' list")
     habit_list = await _get_or_create_habit_list(user)
     habit_list.data["habits"] = habits
+    await _storage.save_user_habit_list(user, habit_list)
     return {"ok": True, "count": len(habits)}
 
 
@@ -400,6 +415,7 @@ async def seed_sample_data(user: User = Depends(current_active_user)):
         })
 
     habit_list.data["habits"] = (habit_list.data.get("habits") or []) + new_habits
+    await _storage.save_user_habit_list(user, habit_list)
     return {"ok": True, "added": len(new_habits)}
 
 
