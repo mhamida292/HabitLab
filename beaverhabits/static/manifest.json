@@ -1,0 +1,12 @@
+{
+  "name": "BeaverHabits",
+  "short_name": "Habits",
+  "description": "Self-hosted habit tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07080a",
+  "theme_color": "#07080a",
+  "icons": [
+    { "src": "/static/favicon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ]
+}
