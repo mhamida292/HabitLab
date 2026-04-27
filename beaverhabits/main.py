@@ -11,7 +11,7 @@ from beaverhabits.configs import settings
 from beaverhabits.logger import logger
 from beaverhabits.routes.api import init_api_routes
 from beaverhabits.routes.metrics import init_metrics_routes
-# routes.pages added in Task 5.1
+from beaverhabits.routes.pages import init_page_routes
 
 logger.info("Starting BeaverHabits...")
 
@@ -38,7 +38,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 init_metrics_routes(app)
 init_auth_routes(app)
 init_api_routes(app)
-# init_page_routes(app) — added in Task 5.1
+init_page_routes(app)
 
 
 @app.middleware("http")

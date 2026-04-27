@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}{{ habit.name }} multi-year · BeaverHabits{% endblock %}
+{% block title %}Multi-year heatmap · BeaverHabits{% endblock %}
 
 {% block sidebar %}
 <div class="s-label">Navigation</div>
 <ul class="flist">
-    <li class="fi-item" onclick="window.location='/habits/{{ habit.id }}'"><div class="fn">← Back to habit</div></li>
+    <li class="fi-item" onclick="window.location='/habits/{{ habit_id }}'"><div class="fn">← Back to habit</div></li>
 </ul>
 {% endblock %}
 
 {% block content %}
-<div style="padding:16px;overflow-y:auto" id="multiYearRoot" data-habit-id="{{ habit.id }}">
-    <h1 style="font-size:18px;margin-bottom:14px">{{ habit.name }}</h1>
+<div style="padding:16px;overflow-y:auto" id="multiYearRoot" data-habit-id="{{ habit_id }}">
+    <h1 id="myName" style="font-size:18px;margin-bottom:14px">…</h1>
     <div id="yearsContainer"></div>
 </div>
 {% endblock %}
