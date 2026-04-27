@@ -129,15 +129,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) { toast(err.message, 'error'); }
     });
 
-    document.getElementById('wipeBtn')?.addEventListener('click', async () => {
-        const typed = prompt('This permanently deletes every habit and your account. Type DELETE to confirm.');
-        if (typed !== 'DELETE') return;
-        try {
-            await api.post('/auth/wipe');
-        } catch (err) { toast(err.message, 'error'); return; }
-        localStorage.removeItem('jwt');
-        window.location.href = '/login';
-    });
+    const wipeBtn = document.getElementById('wipeBtn');
+    if (wipeBtn) {
+        wipeBtn.addEventListener('click', async () => {
+            console.log('wipeBtn clicked');
+            const typed = prompt('This permanently deletes every habit and your account. Type DELETE to confirm.');
+            console.log('wipe confirmation typed:', typed);
+            if (typed !== 'DELETE') return;
+            try {
+                await api.post('/auth/wipe');
+            } catch (err) {
+                console.error('wipe failed', err);
+                toast(err.message, 'error');
+                return;
+            }
+            localStorage.removeItem('jwt');
+            window.location.href = '/login';
+        });
+    } else {
+        console.warn('wipeBtn not found in DOM at app.js init');
+    }
 });
 
 // ── Logout ───────────────────────────────────────────────────────
