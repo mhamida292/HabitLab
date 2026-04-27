@@ -65,6 +65,18 @@ export function renderSingleHeatmap(host, days, weeks = 26, habitId = null) {
     }
 }
 
+async function refreshDetailStats(habitId) {
+    try {
+        const stats = await api.get(`/api/v1/habits/${habitId}/stats`);
+        const streakEl = document.getElementById('dStreak');
+        const d30El = document.getElementById('d30');
+        const totalEl = document.getElementById('dTotal');
+        if (streakEl) streakEl.textContent = stats.streak;
+        if (d30El) d30El.textContent = `${stats.percent_30d}%`;
+        if (totalEl) totalEl.textContent = stats.total;
+    } catch { /* leave stale */ }
+}
+
 async function toggleCell(cell, habitId) {
     const wasDone = cell.dataset.done === '1';
     const nextDone = !wasDone;
@@ -77,6 +89,7 @@ async function toggleCell(cell, habitId) {
             date: cell.dataset.date,
             date_fmt: '%Y-%m-%d',
         });
+        await refreshDetailStats(habitId);
     } catch (err) {
         cell.dataset.done = wasDone ? '1' : '0';
         cell.classList.toggle('l3', wasDone);
