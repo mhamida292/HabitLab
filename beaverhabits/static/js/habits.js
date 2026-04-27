@@ -1,6 +1,5 @@
 import { api, toast } from '/static/js/api.js';
 import { openNoteEditor } from '/static/js/notes.js';
-import { renderHabitDetailHeatmap } from '/static/js/heatmap.js';
 
 const ICON_PALETTE = [
     '📌','💧','📚','🏃','🧘','🙏','💪','🌅',
@@ -345,8 +344,6 @@ export async function renderHabitDetail() {
         document.getElementById('d30').textContent = `${stats.percent_30d}%`;
         document.getElementById('dTotal').textContent = stats.total;
     } catch { /* leave placeholders */ }
-
-    await renderHabitDetailHeatmap();
 }
 
 document.addEventListener('DOMContentLoaded', () => {

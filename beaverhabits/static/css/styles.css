@@ -120,6 +120,34 @@ button,input,textarea,select{font-family:var(--sans)}
 .hchk-count{font-size:9px;font-weight:700;color:var(--text);font-family:var(--mono)}
 .hm-count{font-size:8px;font-weight:700;color:var(--text);font-family:var(--mono);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 
+/* ── Calendar (month view) ─────────────────────────────────── */
+.cal { padding: 4px 0; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 4px 12px; }
+.cal-title { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
+.cal-nav { background: none; border: 1px solid var(--border); color: var(--text-dim); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all .15s; padding: 0; }
+.cal-nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.cal-nav:disabled { opacity: .25; cursor: not-allowed; }
+.cal-dows { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0 4px 6px; font-family: var(--mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.cal-dows span { text-align: center; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 0 4px; }
+.cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface2); font-size: 14px; cursor: pointer; transition: all .12s; position: relative; }
+.cal-day.empty { background: transparent; cursor: default; }
+.cal-day.future { opacity: .3; cursor: not-allowed; }
+.cal-day.today:not(.done) { box-shadow: inset 0 0 0 1.5px var(--text-dim); }
+.cal-day.partial { background: color-mix(in srgb, var(--accent) 35%, var(--surface2)); }
+.cal-day.done { background: var(--accent); color: #fff; font-weight: 600; }
+.cal-day:hover:not(.future):not(.empty) { box-shadow: inset 0 0 0 2px var(--accent); }
+.cal-num { line-height: 1; }
+.cal-count { position: absolute; bottom: 2px; right: 4px; font-size: 8px; font-family: var(--mono); color: var(--text-muted); }
+.cal-day.done .cal-count { color: rgba(255,255,255,0.85); }
+
+@media (max-width: 768px) {
+    .cal-day { font-size: 13px; }
+    .cal-dows { font-size: 9px; gap: 3px; padding: 0 2px 4px; }
+    .cal-grid { gap: 3px; padding: 0 2px; }
+    .cal-count { font-size: 7px; bottom: 1px; right: 2px; }
+}
+
 /* ── Toast + shade ─────────────────────────────────────────── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--success);color:#000;padding:10px 24px;border-radius:100px;font-family:var(--mono);font-size:12px;font-weight:700;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:200;pointer-events:none;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
