@@ -1,5 +1,4 @@
 import datetime
-import functools
 import gc
 import hashlib
 import os
@@ -17,88 +16,20 @@ import pytz
 from cachetools import TTLCache
 from dateutil.relativedelta import relativedelta
 from fastapi import HTTPException
-from nicegui import app, ui
 from psutil._common import bytes2human
 from starlette import status
 
 from beaverhabits.configs import settings
-from beaverhabits.frontend.icons import PRIMARY_COLOR
+
+PRIMARY_COLOR = "#6796cf"
+
 from beaverhabits.logger import logger
 
 WEEK_DAYS = 7
-TIME_ZONE_KEY = "timezone"
-DARK_MODE_KEY = "dark_mode"
 
 PERIOD_TYPES = D, W, M, Y = "D", "W", "M", "Y"
 PERIOD_TYPES_FOR_HUMAN = {D: "Day(s)", W: "Week(s)", M: "Month(s)", Y: "Year(s)"}
 PERIOD_TYPE: TypeAlias = Literal["D", "W", "M", "Y"]
-
-
-def on_connect_task(fn):
-    @functools.wraps(fn)
-    async def wrapper(*args, **kwargs):
-        logger.info(f"On connect: {fn.__name__}")
-        return await fn(*args, **kwargs)
-
-    return wrapper
-
-
-@on_connect_task
-async def fetch_user_timezone() -> None:
-    timezone = await ui.run_javascript(
-        "Intl.DateTimeFormat().resolvedOptions().timeZone"
-    )
-    app.storage.user[TIME_ZONE_KEY] = timezone
-    logger.info(f"User timezone from browser: {timezone}")
-
-
-async def get_or_create_user_timezone() -> str:
-    if settings.TIME_ZONE:
-        return settings.TIME_ZONE
-
-    if timezone := app.storage.user.get(TIME_ZONE_KEY):
-        return timezone
-
-    ui.context.client.on_connect(fetch_user_timezone)
-
-    return "UTC"
-
-
-@on_connect_task
-async def fetch_user_dark_mode() -> None:
-    if app.storage.user.get(DARK_MODE_KEY) is not None:
-        return
-
-    try:
-        dark = await ui.run_javascript("Quasar.Dark.isActive")
-        app.storage.user[DARK_MODE_KEY] = dark
-        logger.info(f"User dark mode from browser: {dark}")
-    except Exception as e:
-        logger.error(f"Error fetching user dark mode: {e}")
-
-
-def set_user_dark_mode(dark: bool) -> None:
-    if settings.DARK_MODE != None:
-        raise ValueError("Dark mode is set in settings, cannot change it manually.")
-
-    try:
-        app.storage.user[DARK_MODE_KEY] = dark
-        logger.info(f"User dark mode set to: {dark}")
-    except Exception as e:
-        logger.error(f"Error setting user dark mode: {e}")
-
-
-def get_user_dark_mode() -> bool | None:
-    if settings.DARK_MODE != None:
-        return settings.DARK_MODE
-
-    try:
-        dark = app.storage.user.get(DARK_MODE_KEY)
-    except Exception as e:
-        logger.error(f"Error get user dark mode: {e}")
-        dark = None
-
-    return dark
 
 
 def _align_today(today: datetime.date) -> datetime.date:
@@ -122,38 +53,19 @@ def _align_today(today: datetime.date) -> datetime.date:
     return today
 
 
-def get_or_create_user_timezone_sync() -> str:
-    """Synchronous variant of `get_or_create_user_timezone`.
-
-    Returns the stored timezone if available. If not, registers the
-    async `fetch_user_timezone` to run on next client connect and
-    returns 'UTC' as a safe fallback.
-    """
-    if settings.TIME_ZONE:
-        return settings.TIME_ZONE
-
-    try:
-        if timezone := app.storage.user.get(TIME_ZONE_KEY):
-            return timezone
-    except Exception as e:
-        logger.error(f"Error reading user timezone from storage: {e}")
-
-    try:
-        ui.context.client.on_connect(fetch_user_timezone)
-    except Exception as e:
-        logger.debug(f"Could not register fetch_user_timezone on connect: {e}")
-
-    return "UTC"
+def _get_timezone() -> str:
+    """Return the configured timezone, falling back to UTC."""
+    return settings.TIME_ZONE or "UTC"
 
 
 def get_user_today_date_sync() -> datetime.date:
-    timezone = get_or_create_user_timezone_sync()
+    timezone = _get_timezone()
     today = datetime.datetime.now(pytz.timezone(timezone)).date()
     return _align_today(today)
 
 
 async def get_user_today_date() -> datetime.date:
-    timezone = await get_or_create_user_timezone()
+    timezone = _get_timezone()
     today = datetime.datetime.now(pytz.timezone(timezone)).date()
     return _align_today(today)
 

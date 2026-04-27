@@ -8,7 +8,6 @@ from fastapi_users import exceptions, models
 from fastapi_users.exceptions import UserAlreadyExists
 from fastapi_users.jwt import decode_jwt, generate_jwt
 from fastapi_users.manager import RESET_PASSWORD_TOKEN_AUDIENCE
-from nicegui import app
 
 from beaverhabits.app.db import User, get_async_session, get_user_db
 from beaverhabits.app.schemas import UserCreate
@@ -120,7 +119,6 @@ async def user_get_by_id(user_id: UUID) -> User:
 
 
 def user_logout() -> bool:
-    app.storage.user.clear()
     return True
 
 

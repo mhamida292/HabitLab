@@ -1,14 +1,101 @@
-from loguru import logger
-from nicegui import background_tasks, core
-from nicegui.storage import observables
+import asyncio
 
 from beaverhabits.app import crud
 from beaverhabits.app.db import User
+from beaverhabits.logger import logger
 from beaverhabits.storage.dict import DictHabitList
 from beaverhabits.storage.storage import UserStorage
 
 
-class DatabasePersistentDict(observables.ObservableDict):
+def _wrap(value, on_change):
+    """Recursively wrap dicts and lists so nested mutations also trigger on_change."""
+    if isinstance(value, ObservableDict):
+        return value
+    if isinstance(value, dict):
+        return ObservableDict(value, on_change)
+    if isinstance(value, list):
+        return ObservableList(value, on_change)
+    return value
+
+
+class ObservableList(list):
+    def __init__(self, data, on_change):
+        super().__init__(_wrap(v, on_change) for v in data)
+        self._on_change = on_change
+
+    def _notify(self):
+        self._on_change()
+
+    def __setitem__(self, index, value):
+        super().__setitem__(index, _wrap(value, self._on_change))
+        self._notify()
+
+    def __delitem__(self, index):
+        super().__delitem__(index)
+        self._notify()
+
+    def append(self, value):
+        super().append(_wrap(value, self._on_change))
+        self._notify()
+
+    def insert(self, index, value):
+        super().insert(index, _wrap(value, self._on_change))
+        self._notify()
+
+    def pop(self, index=-1):
+        result = super().pop(index)
+        self._notify()
+        return result
+
+    def remove(self, value):
+        super().remove(value)
+        self._notify()
+
+    def clear(self):
+        super().clear()
+        self._notify()
+
+
+class ObservableDict(dict):
+    def __init__(self, data, on_change):
+        super().__init__((_wrap(k, on_change), _wrap(v, on_change)) for k, v in data.items())
+        self._on_change = on_change
+
+    def _notify(self):
+        self._on_change()
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, _wrap(value, self._on_change))
+        self._notify()
+
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self._notify()
+
+    def update(self, *args, **kwargs):
+        if args:
+            other = args[0]
+            if hasattr(other, "items"):
+                for k, v in other.items():
+                    super().__setitem__(k, _wrap(v, self._on_change))
+            else:
+                for k, v in other:
+                    super().__setitem__(k, _wrap(v, self._on_change))
+        for k, v in kwargs.items():
+            super().__setitem__(k, _wrap(v, self._on_change))
+        self._notify()
+
+    def pop(self, key, *args):
+        result = super().pop(key, *args)
+        self._notify()
+        return result
+
+    def clear(self):
+        super().clear()
+        self._notify()
+
+
+class DatabasePersistentDict(ObservableDict):
 
     def __init__(self, user: User, data: dict) -> None:
         self.user = user
@@ -17,17 +104,16 @@ class DatabasePersistentDict(observables.ObservableDict):
     def backup(self) -> None:
         async def async_backup() -> None:
             try:
-                await crud.update_user_habit_list(self.user, self)
+                await crud.update_user_habit_list(self.user, dict(self))
             except Exception as e:
                 logger.exception(
                     f"[backup]failed to update habit list for user {self.user.email}: {e}"
                 )
 
-        if core.loop and core.loop.is_running():
-            background_tasks.create_lazy(
-                async_backup(), name=f"backup-{self.user.email}"
-            )
-        else:
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(async_backup())
+        except RuntimeError:
             raise RuntimeError("No event loop found for scheduling backup")
 
 

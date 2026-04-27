@@ -2,7 +2,7 @@ import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
-from loguru import logger
+from beaverhabits.logger import logger
 from pydantic import BaseModel
 
 from beaverhabits import views
