@@ -1,4 +1,6 @@
 import datetime
+import re
+from pathlib import Path
 from typing import AsyncGenerator
 from uuid import UUID
 
@@ -17,6 +19,13 @@ from sqlalchemy.orm import (
 from beaverhabits.configs import settings
 
 DATABASE_URL = settings.DATABASE_URL
+
+# For SQLite URLs, ensure the parent directory exists before SQLAlchemy
+# tries to open the file (otherwise: "unable to open database file").
+_sqlite_match = re.match(r"^sqlite\+aiosqlite:///(.*)$", DATABASE_URL)
+if _sqlite_match:
+    _db_path = Path(_sqlite_match.group(1))
+    _db_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 class Base(DeclarativeBase):

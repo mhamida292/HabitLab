@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # Auth
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     JWT_SECRET: str = "SECRET"
-    JWT_LIFETIME_SECONDS: int = 0
+    JWT_LIFETIME_SECONDS: int = 60 * 60 * 24 * 30  # 30 days
     TRUSTED_EMAIL_HEADER: str = ""
     TRUSTED_LOCAL_EMAIL: str = ""
 
