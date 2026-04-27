@@ -1,3 +1,5 @@
+name: habitlab
+
 services:
   habitlab:
     image: habitlab:latest
