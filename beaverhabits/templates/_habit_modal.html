@@ -1,0 +1,25 @@
+<div class="ov" id="habitOv">
+    <div class="modal">
+        <div class="mh">
+            <div class="mt" id="habitModalTitle">New habit</div>
+            <button class="mx" onclick="closeHabitModal()">&times;</button>
+        </div>
+        <div class="mb">
+            <div class="fg">
+                <label class="fl">Name</label>
+                <input class="finp" id="habitNameIn" maxlength="80" placeholder="e.g. Drink water">
+            </div>
+            <div class="fg">
+                <label class="fl">Tags (comma-separated)</label>
+                <input class="finp" id="habitTagsIn" placeholder="health, learning">
+            </div>
+        </div>
+        <div class="mf">
+            <button class="bdng" id="habitDeleteBtn" style="visibility:hidden">Delete</button>
+            <div style="display:flex;gap:8px">
+                <button class="bgho" onclick="closeHabitModal()">Cancel</button>
+                <button class="bpri" id="habitSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+</div>

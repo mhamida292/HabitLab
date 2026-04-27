@@ -359,14 +359,68 @@ async def import_data(
     return {"ok": True, "count": len(habits)}
 
 
+@api_router.post("/seed/sample-data", tags=["data"])
+async def seed_sample_data(user: User = Depends(current_active_user)):
+    """Populate the user's habit list with a few sample habits and recent ticks."""
+    import random
+    from beaverhabits.utils import generate_short_hash
+
+    habit_list = await _get_or_create_habit_list(user)
+    today = datetime.date.today()
+
+    samples = [
+        {"name": "Drink water", "tags": ["health"]},
+        {"name": "Read 20 minutes", "tags": ["learning"]},
+        {"name": "Exercise", "tags": ["health", "fitness"]},
+        {"name": "Meditate", "tags": ["mindfulness"]},
+        {"name": "Journal", "tags": ["mindfulness"]},
+    ]
+
+    rng = random.Random(42)
+    new_habits = []
+    for s in samples:
+        records = []
+        for offset in range(60):
+            day = today - datetime.timedelta(days=offset)
+            if rng.random() < 0.65:
+                records.append({"day": day.strftime("%Y-%m-%d"), "done": True, "text": ""})
+        new_habits.append({
+            "id": generate_short_hash(s["name"] + str(rng.random())),
+            "name": s["name"],
+            "tags": s["tags"],
+            "star": False,
+            "status": "active",
+            "records": records,
+        })
+
+    habit_list.data["habits"] = (habit_list.data.get("habits") or []) + new_habits
+    return {"ok": True, "added": len(new_habits)}
+
+
+def _record_to_dict(r) -> dict:
+    try:
+        day = r.day.isoformat()
+    except Exception:
+        day = r.data.get("day") if hasattr(r, "data") else None
+    return {"day": day, "done": bool(r.done), "text": getattr(r, "text", "") or ""}
+
+
 def format_json_response(habit: Habit) -> dict:
+    period = habit.period
+    period_out = None
+    if period is not None:
+        period_out = {
+            "target_count": period.target_count,
+            "period_count": period.period_count,
+            "period_type": period.period_type,
+        }
     return {
         "id": habit.id,
         "name": habit.name,
         "star": habit.star,
-        "records": habit.records,
-        "status": habit.status,
-        "period": habit.period,
+        "records": [_record_to_dict(r) for r in habit.records],
+        "status": getattr(habit.status, "value", str(habit.status)),
+        "period": period_out,
         "tags": habit.tags,
     }
 

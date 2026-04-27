@@ -7,6 +7,7 @@ let activeFilter = 'all';
 let activeTag = null;
 let searchTerm = '';
 let sortMode = 'manual';
+let editingHabitId = null;
 
 function dateNDaysAgo(n) {
     const d = new Date();
@@ -64,6 +65,9 @@ function attachCheckHandlers(chk, habit, getRecords) {
         const cur = chk.dataset.status;
         const nextDone = cur !== 'yes';
         chk.dataset.status = nextDone ? 'yes' : '';
+        chk.innerHTML = nextDone
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+            : '';
         try {
             await api.post(`/api/v1/habits/${habit.id}/completions`, {
                 done: nextDone,
@@ -72,6 +76,9 @@ function attachCheckHandlers(chk, habit, getRecords) {
             });
         } catch (err) {
             chk.dataset.status = cur;
+            chk.innerHTML = cur === 'yes'
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+                : '';
             toast(err.message, 'error');
         }
     });
@@ -122,11 +129,10 @@ function renderRow(habit) {
     editBtn.className = 'ibtn';
     editBtn.textContent = '✎';
     editBtn.title = 'Edit';
-    editBtn.addEventListener('click', (e) => { e.stopPropagation(); expandRow(row, habit); });
+    editBtn.addEventListener('click', (e) => { e.stopPropagation(); openHabitModal(habit); });
 
     row.append(icon, name, checks, editBtn);
 
-    // Lazy-load full habit (with records) on first render to populate the day boxes accurately.
     fetchHabitDetail(habit.id).then(full => {
         if (!full) return;
         cachedRecords = full.records || [];
@@ -142,58 +148,53 @@ function renderRow(habit) {
     return row;
 }
 
-function expandRow(row, habit) {
-    if (row.classList.contains('expanded')) return;
-    const tpl = document.getElementById('habitFormTemplate');
-    const clone = tpl.content.cloneNode(true);
-    row.innerHTML = '';
-    row.classList.add('expanded');
-    row.appendChild(clone);
-
-    row.querySelector('[name=name]').value = habit.name;
-    row.querySelector('[name=tags]').value = (habit.tags || []).join(', ');
-
-    row.querySelector('[data-action=cancel]').onclick = refreshHabits;
-    row.querySelector('[data-action=delete]').onclick = async () => {
-        if (!confirm('Delete this habit?')) return;
-        try {
-            await api.delete(`/api/v1/habits/${habit.id}`);
-            await refreshHabits();
-        } catch (e) { toast(e.message, 'error'); }
-    };
-    row.querySelector('[data-action=save]').onclick = async () => {
-        const body = {
-            name: row.querySelector('[name=name]').value.trim(),
-            tags: row.querySelector('[name=tags]').value.split(',').map(s => s.trim()).filter(Boolean),
-        };
-        if (!body.name) { toast('Name is required', 'error'); return; }
-        try {
-            await api.put(`/api/v1/habits/${habit.id}`, body);
-            toast('Saved');
-            await refreshHabits();
-        } catch (e) { toast(e.message, 'error'); }
-    };
+// ── Habit modal (add / edit) ─────────────────────────────────────
+function openHabitModal(habit) {
+    editingHabitId = habit?.id || null;
+    document.getElementById('habitModalTitle').textContent = habit ? 'Edit habit' : 'New habit';
+    document.getElementById('habitNameIn').value = habit?.name || '';
+    document.getElementById('habitTagsIn').value = (habit?.tags || []).join(', ');
+    document.getElementById('habitDeleteBtn').style.visibility = habit ? 'visible' : 'hidden';
+    document.getElementById('habitOv').classList.add('on');
+    setTimeout(() => document.getElementById('habitNameIn').focus(), 50);
 }
 
-function expandNewRow() {
-    const grid = document.getElementById('hgrid');
-    const row = document.createElement('div');
-    row.className = 'hrow expanded';
-    grid.prepend(row);
-    const tpl = document.getElementById('habitFormTemplate');
-    row.appendChild(tpl.content.cloneNode(true));
-    row.querySelector('[data-action=delete]').style.visibility = 'hidden';
-    row.querySelector('[data-action=cancel]').onclick = () => row.remove();
-    row.querySelector('[data-action=save]').onclick = async () => {
-        const name = row.querySelector('[name=name]').value.trim();
-        if (!name) { toast('Name is required', 'error'); return; }
-        try {
+window.closeHabitModal = () => {
+    document.getElementById('habitOv').classList.remove('on');
+    editingHabitId = null;
+};
+
+async function saveHabitFromModal() {
+    const name = document.getElementById('habitNameIn').value.trim();
+    const tags = document.getElementById('habitTagsIn').value.split(',').map(s => s.trim()).filter(Boolean);
+    if (!name) { toast('Name is required', 'error'); return; }
+    try {
+        if (editingHabitId) {
+            await api.put(`/api/v1/habits/${editingHabitId}`, { name, tags });
+            toast('Saved');
+        } else {
             await api.post('/api/v1/habits', { name });
+            const created = await api.get('/api/v1/habits');
+            const newest = created[created.length - 1];
+            if (tags.length && newest) {
+                await api.put(`/api/v1/habits/${newest.id}`, { tags });
+            }
             toast('Created');
-            await refreshHabits();
-        } catch (e) { toast(e.message, 'error'); }
-    };
-    row.querySelector('[name=name]').focus();
+        }
+        closeHabitModal();
+        await refreshHabits();
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteHabitFromModal() {
+    if (!editingHabitId) return;
+    if (!confirm('Delete this habit?')) return;
+    try {
+        await api.delete(`/api/v1/habits/${editingHabitId}`);
+        toast('Deleted');
+        closeHabitModal();
+        await refreshHabits();
+    } catch (e) { toast(e.message, 'error'); }
 }
 
 function applyFilters(habits) {
@@ -289,7 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderDayLabels();
     refreshHabits();
 
-    document.getElementById('addBtn')?.addEventListener('click', expandNewRow);
+    document.getElementById('addBtn')?.addEventListener('click', () => openHabitModal(null));
+    document.getElementById('habitSaveBtn')?.addEventListener('click', saveHabitFromModal);
+    document.getElementById('habitDeleteBtn')?.addEventListener('click', deleteHabitFromModal);
     document.getElementById('searchIn')?.addEventListener('input', (e) => { searchTerm = e.target.value; renderGrid(); });
     document.getElementById('sortSel')?.addEventListener('change', (e) => { sortMode = e.target.value; renderGrid(); });
     document.querySelectorAll('.tbtn').forEach(btn => btn.addEventListener('click', (e) => {

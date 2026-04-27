@@ -119,6 +119,15 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.reload();
         } catch (err) { toast(err.message, 'error'); }
     });
+
+    document.getElementById('seedBtn')?.addEventListener('click', async () => {
+        if (!confirm('Add 5 sample habits with 60 days of random history?')) return;
+        try {
+            const result = await api.post('/api/v1/seed/sample-data');
+            toast(`Added ${result.added} habits`);
+            window.location.reload();
+        } catch (err) { toast(err.message, 'error'); }
+    });
 });
 
 // ── Logout ───────────────────────────────────────────────────────

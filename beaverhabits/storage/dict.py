@@ -137,7 +137,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
 
     @property
     def records(self) -> list[DictRecord]:
-        return [DictRecord(d) for d in self.data["records"]]
+        return [DictRecord(d) for d in self.data.get("records", [])]
 
     @property
     def period(self) -> HabitFrequency | None:
