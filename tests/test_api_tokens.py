@@ -7,7 +7,7 @@ from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
-from loguru import logger
+from beaverhabits.logger import logger
 
 from beaverhabits.app.db import User, engine
 from beaverhabits.main import app

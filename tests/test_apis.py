@@ -8,8 +8,7 @@ from datetime import date, datetime
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from loguru import logger
-from nicegui import core
+from beaverhabits.logger import logger
 
 from beaverhabits.app.db import User, engine
 from beaverhabits.app.dependencies import current_admin_user

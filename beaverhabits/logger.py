@@ -1,10 +1,11 @@
+import logging
+import os
 import sys
 
-from loguru import logger
-
-from .configs import settings
-
-# set level based on environment (production: info)
-if not settings.is_dev():
-    logger.remove()
-    logger.add(sys.stderr, level="INFO")
+_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=_level,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    stream=sys.stdout,
+)
+logger = logging.getLogger("beaverhabits")

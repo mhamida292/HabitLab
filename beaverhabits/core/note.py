@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 from urllib.parse import quote
 
-from loguru import logger
+from beaverhabits.logger import logger
 
 from beaverhabits import utils
 
