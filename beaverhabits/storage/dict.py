@@ -197,7 +197,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
                 logger.error(f"Invalid date_started value: {raw}")
         # Legacy fallback: earliest record day, else today
         days = [r.day for r in self.records]
-        return min(days) if days else datetime.date.today()
+        return min(min(days), datetime.date.today()) if days else datetime.date.today()
 
     @date_started.setter
     def date_started(self, value: datetime.date) -> None:
