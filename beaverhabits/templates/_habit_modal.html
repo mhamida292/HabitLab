@@ -17,9 +17,21 @@
                 </div>
             </div>
             <div class="fg">
-                <label class="fl">Times per day</label>
-                <input class="finp" id="habitTargetIn" type="number" min="1" max="99" value="1" style="width:120px">
-                <div class="cwarn" style="margin-top:4px;text-align:left">Set higher than 1 for habits like "pray 5 times a day". Each click on a day adds one. The day shows as fully done when count reaches the target.</div>
+                <label class="fl">Frequency</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <input class="finp" id="habitTargetIn" type="number" min="1" max="99" value="1" style="width:80px">
+                    <span style="font-size:13px;color:var(--text-dim)">times per</span>
+                    <select class="finp" id="habitPeriodIn" style="width:110px">
+                        <option value="D">day</option>
+                        <option value="W">week</option>
+                    </select>
+                </div>
+                <div class="cwarn" id="habitFreqHint" style="margin-top:4px;text-align:left">Each click adds one. The day shows as fully done when count reaches the target.</div>
+            </div>
+            <div class="fg">
+                <label class="fl">Date started</label>
+                <input class="finp" id="habitStartedIn" type="date" style="width:180px">
+                <div class="cwarn" style="margin-top:4px;text-align:left">Percentage stats are scoped to days from this date onward.</div>
             </div>
             <div class="fg">
                 <label class="fl">Tags (comma-separated)</label>
