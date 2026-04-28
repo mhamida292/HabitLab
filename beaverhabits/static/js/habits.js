@@ -378,6 +378,8 @@ export async function renderHabitDetail() {
     try {
         const stats = await api.get(`/api/v1/habits/${habitId}/stats`);
         document.getElementById('dStreak').textContent = stats.streak;
+        const d7El = document.getElementById('d7');
+        if (d7El) d7El.textContent = `${stats.percent_7d}%`;
         document.getElementById('d30').textContent = `${stats.percent_30d}%`;
         document.getElementById('dTotal').textContent = stats.total;
     } catch { /* leave placeholders */ }

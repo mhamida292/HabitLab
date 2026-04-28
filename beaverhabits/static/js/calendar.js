@@ -118,9 +118,11 @@ async function refreshStats() {
     try {
         const stats = await api.get(`/api/v1/habits/${state.habitId}/stats`);
         const streakEl = document.getElementById('dStreak');
+        const d7El = document.getElementById('d7');
         const d30El = document.getElementById('d30');
         const totalEl = document.getElementById('dTotal');
         if (streakEl) streakEl.textContent = stats.streak;
+        if (d7El) d7El.textContent = `${stats.percent_7d}%`;
         if (d30El) d30El.textContent = `${stats.percent_30d}%`;
         if (totalEl) totalEl.textContent = stats.total;
     } catch { /* leave stale */ }
