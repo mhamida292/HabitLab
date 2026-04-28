@@ -9,21 +9,19 @@
 {% endblock %}
 
 {% block content %}
-<div style="padding:16px;overflow-y:auto">
+<div style="padding:16px">
     <h1 style="font-size:18px;margin-bottom:14px">Overall stats</h1>
-    <div id="statsRoot">Loading…</div>
+    <div class="stats-row" id="aggCards">
+        <div class="stat-card"><div class="stat-num" id="aActive">—</div><div class="stat-lbl">Active</div></div>
+        <div class="stat-card"><div class="stat-num" id="aAvg30">—</div><div class="stat-lbl">30-day avg</div></div>
+        <div class="stat-card"><div class="stat-num" id="aBestStreak">—</div><div class="stat-lbl">Best streak</div></div>
+        <div class="stat-card"><div class="stat-num" id="aToday">—</div><div class="stat-lbl">Today</div></div>
+    </div>
+    <div id="overviewRows" style="margin-top:18px"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script type="module">
-    import { api } from '/static/js/api.js?v={{ asset_version }}';
-    const root = document.getElementById('statsRoot');
-    try {
-        const habits = await api.get('/api/v1/habits');
-        root.innerHTML = `<p style="color:var(--text-dim)">${habits.length} active habit${habits.length !== 1 ? 's' : ''}.</p>`;
-    } catch (e) {
-        root.innerHTML = `<p style="color:var(--danger)">Could not load stats: ${e.message}</p>`;
-    }
-</script>
+<script type="module" src="/static/js/heatmap.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/stats.js?v={{ asset_version }}"></script>
 {% endblock %}
