@@ -292,6 +292,21 @@ async def put_habit_completions(
     }
 
 
+def _scoped_percent(
+    done_dates: list[datetime.date],
+    today: datetime.date,
+    window_days: int,
+    date_started: datetime.date,
+) -> float:
+    window_start = today - datetime.timedelta(days=window_days - 1)
+    effective_start = max(window_start, date_started)
+    denom = (today - effective_start).days + 1
+    if denom <= 0:
+        return 0.0
+    hits = sum(1 for d in done_dates if effective_start <= d <= today)
+    return round(hits / denom * 100, 1)
+
+
 @api_router.get("/habits/{habit_id}/stats", tags=["habits"])
 async def get_habit_stats(
     habit_id: str,
@@ -312,17 +327,16 @@ async def get_habit_stats(
         streak += 1
         cursor -= datetime.timedelta(days=1)
 
-    def percent(window_days: int) -> float:
-        cutoff = today - datetime.timedelta(days=window_days)
-        hits = sum(1 for d in done_dates if cutoff <= d <= today)
-        return round(hits / window_days * 100, 1)
+    started = habit.date_started
 
     return {
         "streak": streak,
         "total": len(done_dates),
-        "percent_30d": percent(30),
-        "percent_90d": percent(90),
+        "percent_7d": _scoped_percent(done_dates, today, 7, started),
+        "percent_30d": _scoped_percent(done_dates, today, 30, started),
+        "percent_90d": _scoped_percent(done_dates, today, 90, started),
         "target_count": target,
+        "date_started": started.isoformat(),
     }
 
 
