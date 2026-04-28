@@ -58,8 +58,3 @@ def init_page_routes(app: FastAPI) -> None:
             headers=NO_CACHE_HEADERS,
         )
 
-    @app.get("/stats", response_class=HTMLResponse)
-    async def stats_page(request: Request):
-        return templates.TemplateResponse(
-            "stats.html", {"request": request}, headers=NO_CACHE_HEADERS
-        )
