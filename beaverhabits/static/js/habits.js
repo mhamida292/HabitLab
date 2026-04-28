@@ -123,7 +123,7 @@ function renderRow(habit) {
     row.className = 'hrow';
     row.dataset.habitId = habit.id;
 
-    const isWeekly = habit.period && habit.period.period_type === 'W' && habit.period.target_count > 1;
+    const isWeekly = habit.period && habit.period.period_type === 'W';
     const target = isWeekly ? 1 : (habit.target_count || 1);
 
     const icon = document.createElement('div');
