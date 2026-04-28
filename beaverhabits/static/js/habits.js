@@ -373,7 +373,13 @@ export async function renderHabitDetail() {
 
     try {
         const habit = await api.get(`/api/v1/habits/${habitId}`);
-        document.getElementById('dName').textContent = habit.name + (habit.target_count > 1 ? ` · ${habit.target_count}×/day` : '');
+        let subtitle = '';
+        if (habit.period && habit.period.period_type === 'W' && habit.period.target_count > 1) {
+            subtitle = ` · ${habit.period.target_count}×/week`;
+        } else if (habit.target_count > 1) {
+            subtitle = ` · ${habit.target_count}×/day`;
+        }
+        document.getElementById('dName').textContent = habit.name + subtitle;
         const meta = (habit.tags?.length ? habit.tags.map(t => '#' + t).join(' ') : 'No tags');
         document.getElementById('dMeta').textContent = meta;
         document.getElementById('dIcon').textContent = habit.icon || '📌';
