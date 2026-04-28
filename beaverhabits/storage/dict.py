@@ -188,6 +188,22 @@ class DictHabit(Habit[DictRecord], DictStorage):
         self.data["period"] = value.to_dict()
 
     @property
+    def date_started(self) -> datetime.date:
+        raw = self.data.get("date_started")
+        if raw:
+            try:
+                return datetime.date.fromisoformat(raw)
+            except ValueError:
+                logger.error(f"Invalid date_started value: {raw}")
+        # Legacy fallback: earliest record day, else today
+        days = [r.day for r in self.records]
+        return min(days) if days else datetime.date.today()
+
+    @date_started.setter
+    def date_started(self, value: datetime.date) -> None:
+        self.data["date_started"] = value.isoformat()
+
+    @property
     def chips(self) -> list[str]:
         return self.data.get("chips", [])
 
