@@ -22,17 +22,6 @@ function dateNDaysAgo(n) {
 }
 function isoDate(d) { return d.toISOString().slice(0, 10); }
 
-function renderDayLabels() {
-    const labels = document.getElementById('dayLabels');
-    if (!labels) return;
-    const out = [];
-    for (let i = 6; i >= 0; i--) {
-        const d = dateNDaysAgo(i);
-        out.push(d.toLocaleDateString(undefined, { weekday: 'narrow' }));
-    }
-    labels.innerHTML = out.map(l => `<span>${l}</span>`).join('');
-}
-
 function recordFor(records, isoDay) {
     return records?.find(r => r.day === isoDay) || null;
 }
@@ -396,7 +385,6 @@ export async function renderHabitDetail() {
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('hgrid')) return;
-    renderDayLabels();
     refreshHabits();
 
     document.getElementById('addBtn')?.addEventListener('click', () => openHabitModal(null));

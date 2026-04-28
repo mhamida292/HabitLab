@@ -159,8 +159,6 @@ button,input,textarea,select{font-family:var(--sans)}
 
 /* ── Habit grid ────────────────────────────────────────────── */
 .hgrid{flex:1;overflow-y:auto;padding:6px 8px}
-.hday-label{display:flex;justify-content:flex-end;gap:4px;padding:8px 12px 4px;font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase}
-.hday-label span{width:26px;text-align:center}
 .hrow{display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:var(--r);transition:all .12s;border:1px solid transparent;border-left:3px solid transparent;animation:su .25s ease both;margin-bottom:2px}
 .hrow:hover{background:var(--card-hover);border-color:var(--border);border-left-color:var(--accent)}
 .hicon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:all .3s}
