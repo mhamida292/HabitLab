@@ -84,16 +84,26 @@ async def get_habits(
     habit_list: HabitList = Depends(current_habit_list),
 ):
     habits = HabitListBuilder(habit_list).status(status).build()
-    return [
-        {
+    out = []
+    for x in habits:
+        period = x.period
+        out.append({
             "id": x.id,
             "name": x.name,
             "tags": x.tags or [],
             "icon": x.icon,
             "target_count": x.target_count,
-        }
-        for x in habits
-    ]
+            "period": (
+                {
+                    "target_count": period.target_count,
+                    "period_count": period.period_count,
+                    "period_type": period.period_type,
+                }
+                if period is not None
+                else None
+            ),
+        })
+    return out
 
 
 class CreateHabit(BaseModel):

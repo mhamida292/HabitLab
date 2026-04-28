@@ -123,7 +123,8 @@ function renderRow(habit) {
     row.className = 'hrow';
     row.dataset.habitId = habit.id;
 
-    const target = habit.target_count || 1;
+    const isWeekly = habit.period && habit.period.period_type === 'W' && habit.period.target_count > 1;
+    const target = isWeekly ? 1 : (habit.target_count || 1);
 
     const icon = document.createElement('div');
     icon.className = 'hicon';
@@ -133,7 +134,10 @@ function renderRow(habit) {
 
     const name = document.createElement('div');
     name.className = 'hname';
-    name.textContent = habit.name + (target > 1 ? ` · ${target}×/day` : '');
+    let subtitle = '';
+    if (isWeekly) subtitle = ` · ${habit.period.target_count}×/week`;
+    else if (target > 1) subtitle = ` · ${target}×/day`;
+    name.textContent = habit.name + subtitle;
     name.addEventListener('click', () => window.location = `/habits/${habit.id}`);
 
     const checks = document.createElement('div');

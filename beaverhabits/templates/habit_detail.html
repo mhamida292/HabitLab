@@ -40,13 +40,13 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="/static/js/heatmap.js"></script>
-<script type="module" src="/static/js/notes.js"></script>
-<script type="module" src="/static/js/habits.js"></script>
-<script type="module" src="/static/js/calendar.js"></script>
+<script type="module" src="/static/js/heatmap.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/notes.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/habits.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/calendar.js?v={{ asset_version }}"></script>
 <script type="module">
-    import { renderHabitDetail } from '/static/js/habits.js';
-    import { renderMonthCalendar } from '/static/js/calendar.js';
+    import { renderHabitDetail } from '/static/js/habits.js?v={{ asset_version }}';
+    import { renderMonthCalendar } from '/static/js/calendar.js?v={{ asset_version }}';
     renderHabitDetail();
     renderMonthCalendar();
 </script>

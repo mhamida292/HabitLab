@@ -17,7 +17,7 @@
 
 {% block scripts %}
 <script type="module">
-    import { renderMultiYearHeatmap } from '/static/js/heatmap.js';
+    import { renderMultiYearHeatmap } from '/static/js/heatmap.js?v={{ asset_version }}';
     renderMultiYearHeatmap();
 </script>
 {% endblock %}

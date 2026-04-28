@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
@@ -9,6 +10,10 @@ from beaverhabits.app.db import User, get_async_session
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=PROJECT_ROOT / "templates")
+
+# Cache-bust static assets across deploys: changes on every server start.
+ASSET_VERSION = str(int(time.time()))
+templates.env.globals["asset_version"] = ASSET_VERSION
 
 NO_CACHE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",

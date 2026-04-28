@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/styles.css">
+<link rel="stylesheet" href="/static/css/styles.css?v={{ asset_version }}">
 <script>
     (function () {
         var saved = localStorage.getItem('theme') || 'midnight';
@@ -55,8 +55,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script type="module" src="/static/js/api.js"></script>
-<script type="module" src="/static/js/app.js"></script>
+<script type="module" src="/static/js/api.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/app.js?v={{ asset_version }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -17,7 +17,7 @@
 
 {% block scripts %}
 <script type="module">
-    import { api } from '/static/js/api.js';
+    import { api } from '/static/js/api.js?v={{ asset_version }}';
     const root = document.getElementById('statsRoot');
     try {
         const habits = await api.get('/api/v1/habits');
