@@ -216,11 +216,38 @@ function openHabitModal(habit) {
     document.getElementById('habitNameIn').value = habit?.name || '';
     document.getElementById('habitTagsIn').value = (habit?.tags || []).join(', ');
     document.getElementById('habitIconIn').value = habit?.icon || '📌';
-    document.getElementById('habitTargetIn').value = habit?.target_count || 1;
+
+    // Frequency: weekly if period is set with type W, else daily.
+    const periodSel = document.getElementById('habitPeriodIn');
+    const targetIn = document.getElementById('habitTargetIn');
+    if (habit?.period && habit.period.period_type === 'W') {
+        periodSel.value = 'W';
+        targetIn.value = habit.period.target_count || 1;
+    } else {
+        periodSel.value = 'D';
+        targetIn.value = habit?.target_count || 1;
+    }
+    updateFrequencyHint();
+
+    // Date started
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('habitStartedIn').value = habit?.date_started || today;
+
     document.getElementById('habitDeleteBtn').style.visibility = habit ? 'visible' : 'hidden';
     renderIconGrid(habit?.icon || '📌');
     document.getElementById('habitOv').classList.add('on');
     setTimeout(() => document.getElementById('habitNameIn').focus(), 50);
+}
+
+function updateFrequencyHint() {
+    const period = document.getElementById('habitPeriodIn').value;
+    const hint = document.getElementById('habitFreqHint');
+    if (!hint) return;
+    if (period === 'W') {
+        hint.textContent = "Each tapped day counts once toward this week's target.";
+    } else {
+        hint.textContent = 'Each click adds one. The day shows as fully done when count reaches the target.';
+    }
 }
 
 window.closeHabitModal = () => {
@@ -232,14 +259,29 @@ async function saveHabitFromModal() {
     const name = document.getElementById('habitNameIn').value.trim();
     const tags = document.getElementById('habitTagsIn').value.split(',').map(s => s.trim()).filter(Boolean);
     const icon = document.getElementById('habitIconIn').value.trim() || '📌';
-    const target_count = Math.max(1, parseInt(document.getElementById('habitTargetIn').value || '1', 10));
+    const periodType = document.getElementById('habitPeriodIn').value; // 'D' or 'W'
+    const rawTarget = Math.max(1, parseInt(document.getElementById('habitTargetIn').value || '1', 10));
+    const date_started = document.getElementById('habitStartedIn').value || null;
     if (!name) { toast('Name is required', 'error'); return; }
+
+    let target_count;
+    let period;
+    if (periodType === 'W') {
+        target_count = 1;
+        period = { period_type: 'W', period_count: 1, target_count: rawTarget };
+    } else {
+        target_count = rawTarget;
+        period = { period_type: 'D', period_count: 1, target_count: 1 };
+    }
+
+    const payload = { name, tags, icon, target_count, period, date_started };
+
     try {
         if (editingHabitId) {
-            await api.put(`/api/v1/habits/${editingHabitId}`, { name, tags, icon, target_count });
+            await api.put(`/api/v1/habits/${editingHabitId}`, payload);
             toast('Saved');
         } else {
-            await api.post('/api/v1/habits', { name, tags, icon, target_count });
+            await api.post('/api/v1/habits', payload);
             toast('Created');
         }
         closeHabitModal();
@@ -354,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addBtn')?.addEventListener('click', () => openHabitModal(null));
     document.getElementById('habitSaveBtn')?.addEventListener('click', saveHabitFromModal);
     document.getElementById('habitDeleteBtn')?.addEventListener('click', deleteHabitFromModal);
+    document.getElementById('habitPeriodIn')?.addEventListener('change', updateFrequencyHint);
     document.getElementById('searchIn')?.addEventListener('input', (e) => { searchTerm = e.target.value; renderGrid(); });
     document.getElementById('sortSel')?.addEventListener('change', (e) => { sortMode = e.target.value; renderGrid(); });
     document.querySelectorAll('.tbtn').forEach(btn => btn.addEventListener('click', (e) => {
