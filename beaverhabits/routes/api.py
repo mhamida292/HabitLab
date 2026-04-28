@@ -101,6 +101,7 @@ class CreateHabit(BaseModel):
     tags: list[str] | None = None
     icon: str | None = None
     target_count: int | None = None
+    date_started: str | None = None  # ISO YYYY-MM-DD; defaults to today
 
 
 @api_router.post("/habits", tags=["habits"])
@@ -121,6 +122,13 @@ async def post_habits(
             created.icon = habit.icon
         if habit.target_count and habit.target_count > 0:
             created.target_count = habit.target_count
+        if habit.date_started:
+            try:
+                created.date_started = datetime.date.fromisoformat(habit.date_started)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date_started format")
+        else:
+            created.date_started = datetime.date.today()
 
     await _storage.save_user_habit_list(user, habit_list)
     return {
@@ -129,6 +137,7 @@ async def post_habits(
         "tags": habit.tags or [],
         "icon": (created.icon if created else "📌"),
         "target_count": (created.target_count if created else 1),
+        "date_started": (created.date_started.isoformat() if created else datetime.date.today().isoformat()),
     }
 
 
@@ -154,6 +163,7 @@ class UpdateHabit(BaseModel):
     tags: list[str] | None = None
     icon: str | None = None
     target_count: int | None = None
+    date_started: str | None = None
 
 
 @api_router.put("/habits/{habit_id}", tags=["habits"])
@@ -173,17 +183,25 @@ async def put_habit(
     if habit.status is not None:
         existing_habit.status = habit.status
     if habit.period is not None:
-        existing_habit.period = HabitFrequency(
-            target_count=habit.period.target_count,
-            period_count=habit.period.period_count,
-            period_type=habit.period.period_type,
-        )
+        if habit.period.target_count <= 1 and habit.period.period_type == "D":
+            existing_habit.period = None
+        else:
+            existing_habit.period = HabitFrequency(
+                target_count=habit.period.target_count,
+                period_count=habit.period.period_count,
+                period_type=habit.period.period_type,
+            )
     if habit.tags is not None:
         existing_habit.tags = habit.tags
     if habit.icon is not None:
         existing_habit.icon = habit.icon
     if habit.target_count is not None and habit.target_count > 0:
         existing_habit.target_count = habit.target_count
+    if habit.date_started is not None:
+        try:
+            existing_habit.date_started = datetime.date.fromisoformat(habit.date_started)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date_started format")
 
     await _storage.save_user_habit_list(user, habit_list)
     return format_json_response(existing_habit)
@@ -463,6 +481,7 @@ async def seed_sample_data(user: User = Depends(current_active_user)):
             "tags": s["tags"],
             "star": False,
             "status": "active",
+            "date_started": datetime.date.today().isoformat(),
             "records": records,
         })
 
@@ -503,6 +522,7 @@ def format_json_response(habit: Habit) -> dict:
         "tags": habit.tags,
         "icon": habit.icon,
         "target_count": habit.target_count,
+        "date_started": habit.date_started.isoformat(),
     }
 
 
