@@ -368,6 +368,72 @@ async def get_habit_stats(
     }
 
 
+def _build_stats_overview(habits, today: datetime.date) -> dict:
+    window_start = today - datetime.timedelta(days=90)  # inclusive 91-day window
+
+    pct_30s: list[float] = []
+    streaks: list[int] = []
+    today_done = 0
+    habits_out: list[dict] = []
+
+    for h in habits:
+        target = h.target_count
+        counts = {r.day: r.count for r in h.records}
+        done_dates = sorted(day for day, cnt in counts.items() if cnt >= target)
+
+        # Current streak ending today
+        done_set = set(done_dates)
+        streak = 0
+        cursor = today
+        while cursor in done_set:
+            streak += 1
+            cursor -= datetime.timedelta(days=1)
+        streaks.append(streak)
+
+        # 30-day percent (reuses existing helper)
+        pct_30s.append(_scoped_percent(done_dates, today, 30, h.date_started))
+
+        # Today done?
+        if counts.get(today, 0) >= target:
+            today_done += 1
+
+        # 91-day day-by-day slice
+        days_out = []
+        cursor = window_start
+        while cursor <= today:
+            cnt = counts.get(cursor, 0)
+            days_out.append({
+                "date": cursor.isoformat(),
+                "count": cnt,
+                "done": cnt >= target,
+            })
+            cursor += datetime.timedelta(days=1)
+
+        habits_out.append({
+            "id": h.id,
+            "name": h.name,
+            "icon": h.icon,
+            "target_count": target,
+            "days": days_out,
+        })
+
+    n = len(habits)
+    aggregate = {
+        "active_count": n,
+        "avg_30d": round(sum(pct_30s) / n, 1) if n else 0.0,
+        "best_streak": max(streaks) if streaks else 0,
+        "today_done": today_done,
+    }
+    return {"aggregate": aggregate, "habits": habits_out}
+
+
+@api_router.get("/stats/overview", tags=["stats"])
+async def get_stats_overview(user: User = Depends(current_active_user)):
+    habit_list = await _get_or_create_habit_list(user)
+    habits = HabitListBuilder(habit_list).status(HabitStatus.ACTIVE).build()
+    return _build_stats_overview(habits, datetime.date.today())
+
+
 @api_router.get("/habits/{habit_id}/heatmap", tags=["habits"])
 async def get_habit_heatmap(
     habit_id: str,
