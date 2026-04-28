@@ -151,6 +151,16 @@ button,input,textarea,select{font-family:var(--sans)}
 .cal-count { position: absolute; bottom: 1px; right: 3px; font-size: 7px; font-family: var(--mono); color: var(--text-muted); line-height: 1; }
 .cal-day.done .cal-count { color: rgba(255,255,255,0.85); }
 
+/* ── Detail page two-column layout (desktop) ────────────────── */
+.detail-cols { display: block; }
+.detail-col { min-width: 0; }
+@media (min-width: 900px) {
+    .detail-cols { display: flex; gap: 32px; align-items: flex-start; }
+    .detail-col-cal { flex: 0 0 520px; }
+    .detail-col-cal .cal { max-width: 520px; }
+    .detail-col-notes { flex: 1 1 0; min-width: 0; }
+}
+
 /* ── Toast + shade ─────────────────────────────────────────── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--success);color:#000;padding:10px 24px;border-radius:100px;font-family:var(--mono);font-size:12px;font-weight:700;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:200;pointer-events:none;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
