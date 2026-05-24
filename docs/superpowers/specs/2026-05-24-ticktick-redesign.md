@@ -8,9 +8,10 @@
 
 ## 1. Goals
 
-- Make the app look and feel like TickTick's Habits view (reference screenshot provided)
+- Make the app look and feel like TickTick's Habits view (reference screenshots provided)
 - Add first-class support for **sub-goals** — named checkpoints within a habit (e.g. Salah → Fajr, Dhuhr, Asr, Maghrib, Isha)
 - Replace the rolling-window heatmap with a **monthly calendar view** (TickTick circle style)
+- **Split-panel layout** — habit list stays visible on the left, detail opens on the right
 - Consistent dark theme across all screens
 
 ---
@@ -35,7 +36,7 @@
 ### Typography
 - Font: system-ui / -apple-system / BlinkMacSystemFont / 'Segoe UI'
 - Sizes: 10px (meta), 11px (labels/chips), 12–13px (body), 14–17px (titles)
-- All uppercase labels: `letter-spacing: 0.07em`
+- Uppercase labels: `letter-spacing: 0.07em`
 
 ### Radius & Spacing
 - Cards / panels: `border-radius: 10–12px`
@@ -45,182 +46,194 @@
 
 ---
 
-## 3. Screen Inventory
+## 3. Overall Layout
 
-| Screen | Route | Status |
-|---|---|---|
-| Login / Setup | `/login` | Restyled |
-| Main Habits List | `/` | Full redesign |
-| Habit Detail | `/habits/:id` | Full redesign |
-| Heatmap (multi-year) | `/heatmap/:id` | Restyled |
-| Settings (modal) | n/a | Restyled |
+```
+┌─ Nav Rail ─┬──────── List Panel ─────────┬──────── Detail Panel ────────┐
+│  (46px)    │  (fixed ~340px)             │  (flex: 1)                   │
+│            │                             │                              │
+│  [avatar]  │  Top bar: Habit ▾  [⊞][+]  │  [icon] Habit Name    [···]  │
+│  [habits]  │  Week strip                 │                              │
+│  [stats]   │  📌 May 24  ✕              │  6 stat cards (2×3 grid)     │
+│  [search]  │  ▼ Morning  2               │                              │
+│            │    Daily Quran     [ ]      │  Monthly calendar            │
+│  [settings]│    Salah    2/5             │  (circle cells, Sun–Sat)     │
+│            │     [Fajr✓][Dhuhr✓][Asr]  │                              │
+│            │  ▼ Others  3                │  Daily Goals line chart      │
+│            │    Meditate        [✓]      │                              │
+└────────────┴─────────────────────────────┴──────────────────────────────┘
+```
+
+**Selected habit** in the list: blue left border + `background: #111c30`.  
+**No habit selected**: right panel shows an empty state ("Select a habit to see details").  
+**Mobile** (< 768px): panels stack; tapping a habit navigates full-screen to the detail view.
 
 ---
 
 ## 4. Navigation Rail
 
-A fixed 52px-wide left column present on all authenticated screens.
+Fixed 46px-wide left column present on all authenticated screens.
 
-**Items (top to bottom):**
-1. User avatar (initials, green gradient) — links to settings
-2. Habits icon (checklist) — active indicator: blue bg chip
-3. Stats icon (waveform) — future stats page
+**Items (top → bottom):**
+1. User avatar (initials, green gradient)
+2. Habits icon — active state: `background: #1e2d4a`, icon `color: #60a5fa`
+3. Stats icon (waveform)
 4. Search icon
 5. *(spacer)*
 6. Settings icon (gear)
 
-Active item: `background: #1e2d4a`, icon `color: #60a5fa`.  
-Inactive: `color: #555`, hover `background: #1a1a22`.  
-No text labels — icons only.
+Icons only — no text labels.
 
 ---
 
-## 5. Main Habits List (`/`)
+## 5. List Panel
 
-### Layout
-```
-┌─ Nav Rail (52px) ─┬──────────── Main Panel ────────────┐
-│                   │  Top Bar: "Habit ▾"    [⊞][···][+] │
-│  [avatar]         ├────────────────────────────────────┤
-│  [habits]  ←      │  Week Strip (Mon–Sun)               │
-│  [stats]          ├────────────────────────────────────┤
-│  [search]         │  📌 May 24  ✕                       │
-│                   │                                    │
-│  [settings]       │  ▼ Morning  2                      │
-│                   │    [📖] Daily Quran   ···    [ ]   │
-│                   │    [🕌] Salah    2/5               │
-│                   │         [Fajr✓][Dhuhr✓][Asr][…]   │
-│                   │                                    │
-│                   │  ▼ Others  3                       │
-│                   │    [🧘] Meditate     ···    [✓]    │
-│                   │    [🙅] Don't Binge  ···    [ ]    │
-└───────────────────┴────────────────────────────────────┘
-```
+### Top Bar
+`Habit ▾` title · `[⊞ layout toggle]` · `[+ add]` · `[··· more]`
 
 ### Week Strip
-- 7 columns (Mon → Sun), each showing: day-of-week label, day number, completion dot
-- Today: day number has `background: #2563eb`, white text
-- Dot states: none (no data), partial (blue 40% opacity), full (solid blue)
-- Tapping a past day filters the list to show that day's completion state
+- 7 columns Mon → Sun; today highlighted `background: #2563eb`
+- Dot below each day: none / partial (blue 40% opacity) / full (solid blue)
+- Tapping a past/future day filters the list to that day's completion state
+- Active day shown as chip: `📌 May 24 ✕`
 
-### Date Chip
-- Shown when a non-today day is selected: `📌 May 24 ✕`
-- ✕ clears back to today
-
-### Group Headers
-- Habits are grouped by their **first tag**; untagged habits go into "Others"
-- Header: `▼ {Tag name}  {count}` — clicking collapses/expands the group
-- Groups sorted: tagged groups alphabetically, "Others" always last
+### Habit Grouping
+- Habits grouped by **first tag**; untagged → "Others" (always last)
+- Group header: `▼ {Tag}  {count}` — click to collapse/expand
 
 ### Regular Habit Row
 ```
-[icon 34px] [Name]          [toggle ○]
-            [💧 N Days] [🔥 N Day]
+[icon 30px]  Name                    [toggle ○]
+             💧 N Days  🔥 N Day
 ```
-- Icon: circular 34px, `background: #1a1a24`, emoji centred
-- Name: 13px, `color: #e0e0e0`; if done today: `text-decoration: line-through`, `color: #4a4a5a`
-- Stats: `💧 N Days` (total completions) · `🔥 N Day` (current streak)
-- Toggle: 24px circle, right-aligned. Empty = `border: 2px solid #333340`. Done = `background: #2563eb` with `✓`
-- Tapping the row anywhere → navigates to habit detail
-- Tapping the toggle → marks done/undone for selected day (optimistic update, rollback on error)
+- Done today: name struck-through, `color: #4a4a5a`; toggle filled blue `✓`
+- Tapping the **row** → selects habit, opens detail in right panel
+- Tapping the **toggle** → marks done/undone for the active day (optimistic update + rollback)
 
 ### Sub-Goal Habit Row
 ```
-[ring 34px] [Name]          ← no toggle
-            [💧 N Days] [2/5 prayers]
-[   Fajr✓  ][  Dhuhr✓  ][   Asr   ][ Maghrib ][ Isha ]
+[ring 30px]  Name                    (no toggle)
+             💧 N Days  · 2/5 prayers
+[Fajr ✓] [Dhuhr ✓] [Asr] [Maghrib] [Isha]
 ```
-- Icon replaced by a **progress ring**: SVG circle, fills proportionally to sub-goals done
-- Progress label: `{done} / {total} {unit}` where unit comes from the habit's sub-goal config
-- Pills: `border-radius: 20px`, 11px font
-  - Pending: `background: #16161e`, `color: #666`, `border: 1px solid #22222e`
-  - Done: `background: #1a2d4a`, `color: #60a5fa`, `border: 1px solid #2563eb60`, prefix `✓ `
-  - Tapping a pill toggles that sub-goal for the selected day
-- No toggle button — completion state is derived (all sub-goals done = habit done)
-
-### Add Button
-- Top-right `+ Add` → opens a modal/drawer:
-  - Habit name input
-  - Emoji icon picker
-  - Tags input (comma-separated)
-  - Sub-goals toggle: off by default; when on, shows a list of named sub-goal entries
-  - Sub-goal "unit label" field (e.g. "prayers", "sets", "chapters")
+- Icon replaced by **progress ring** (SVG conic, fills as sub-goals are checked)
+- Pills: pending = dark bg + grey text; done = `background: #1a2d4a`, `color: #60a5fa`, prefix `✓`
+- Tapping a **pill** → toggles that sub-goal for the active day
+- Tapping the **row body** (not a pill) → selects habit, opens detail panel
 
 ---
 
-## 6. Habit Detail Page (`/habits/:id`)
+## 6. Detail Panel
 
-### Layout
-```
-← Back    [🕌  Salah]  Morning · 5 sub-goals        [✎][···]
-──────────────────────────────────────────────────────────
-│ Streak 🔥5 │ Total 42 │ 30-day 78% │ 90-day 84% │   ← stat cards
-──────────────────────────────────────────────────────────
-Per-prayer breakdown   (sub-goal habits only)
-  Fajr    ████░░░░  62%  🔥8d
-  Dhuhr   █████████ 91%  🔥14d
-  Asr     ███████░  78%  🔥5d
-  Maghrib ████████░ 88%  🔥11d
-  Isha    ███████░  71%  🔥5d
-──────────────────────────────────────────────────────────
-History · May 2026      ‹  ›
-  Mon Tue Wed Thu Fri Sat Sun
-  [○] [✓] [✓] [⟳] [✓] [✓] [◑]   ← circles
-  ...
-```
+Opens when a habit is selected from the list. The list remains visible.
 
-### Stat Cards
-Four cards in a row: **Streak**, **Total** (full completion days), **30-day %**, **90-day %**.  
-Sources: existing `/api/v1/habits/:id/stats` endpoint — no backend change needed.
+### Header
+`[icon]  Habit Name` · `[···]` (edit / archive / delete)
 
-### Sub-Goal Breakdown
-Only rendered for sub-goal habits. Shows per-sub-goal:
-- Name (e.g. "Fajr")
-- Horizontal progress bar (30-day completion %)
-- Percentage label
-- Streak badge
+### 6 Stat Cards (2-column grid)
+| Card | Value | Source |
+|---|---|---|
+| Monthly check-ins | N Day | completions this calendar month |
+| Total check-ins | N Day | all-time completions |
+| Monthly check-in rate | N % | completions / days elapsed this month |
+| Current streak | N Day | existing `/stats` endpoint |
+| Monthly completion | N Count | sum of `count` this month |
+| Total completion | N Count | sum of `count` all-time |
 
-Data computed client-side from the full habit record list (fetched once on page load via `GET /api/v1/habits/:id`).
+All computable client-side from `GET /api/v1/habits/:id` (returns full record list).
 
 ### Monthly Calendar
-- Navigation: `‹ Month Year ›` arrows
-- 7-column grid (Mon → Sun), day-of-week headers
-- Out-of-month days shown at 25% opacity, non-interactive
-- **Day cell states:**
-  - Empty (no record): `background: #14141a`, grey
-  - Done (count ≥ target): `background: #2563eb`, white `✓`
-  - Partial (sub-goal habits, 0 < done < total): conic-gradient ring, `{done}/{total}` label inside
-  - Future: same as empty, non-interactive
-  - Today: `outline: 2px solid #3b82f6`
-- Tapping a cell on the detail page does **not** toggle — read-only view here. (Editing happens via the main list or heatmap page)
-- Month summary row below calendar: Month %, Streak, Full days, Missed
+- Navigation: `‹ Month Year ›`
+- **Sunday-first** column order (Sun Mon Tue Wed Thu Fri Sat)
+- Out-of-month days: 25% opacity, non-interactive
+- Today: `outline: 2px solid #3b82f6`
+
+**Day circle states:**
+
+| State | Visual |
+|---|---|
+| Empty | `background: #1a1a24`, no content |
+| Done (count ≥ target) | `background: #2563eb`, white `✓` |
+| Partial (sub-goal habit, 0 < done < total) | Conic-gradient ring, `{done}` label inside |
+| Future | Same as empty, non-interactive |
+
+**Tap behaviour:**
+- **Regular habits**: tap toggles done ↔ undone (same `stepCell` logic as existing heatmap)
+- **Sub-goal habits**: tap opens a **popup picker** anchored to the circle:
+  - Shows `{date} · {habit name}` title
+  - Lists each sub-goal with individual checkbox
+  - Tap a sub-goal → toggles it, updates circle in real-time
+  - Closes on outside click
+  - On narrow screens: renders as a bottom sheet instead
+
+### Daily Goals Line Chart
+- X-axis: days 1–{last day of month}
+- Y-axis: 0 → target count
+- Plotted line: `count` per day from the full record list
+- Dashed target line at `y = target_count`
+- Blue fill under the line, `stroke: #2563eb`
+- Data already available from `GET /api/v1/habits/:id` — no extra endpoint
 
 ---
 
-## 7. Login / Setup Page (`/login`)
+## 7. Add / Edit Habit Modal
 
-Clean centred card on the dark background:
+Triggered by `+ Add` button or `···` → Edit on an existing habit.
+
+```
+┌─────────────────────────────────┐
+│  New Habit              [✕] [Save]│
+├─────────────────────────────────┤
+│  [🕌]  [_____ Habit name _____] │
+│                                  │
+│  Tag        [_______________]    │
+│                                  │
+│  Has sub-goals          [toggle] │
+│  ┌─ when toggle is ON ─────────┐ │
+│  │ ⠿  Fajr              [✕]   │ │
+│  │ ⠿  Dhuhr             [✕]   │ │
+│  │ ⠿  Asr               [✕]   │ │
+│  │ ⠿  Maghrib           [✕]   │ │
+│  │ ⠿  Isha              [✕]   │ │
+│  │ ＋ Add sub-goal             │ │
+│  │                             │ │
+│  │ Unit label  [prayers]       │ │
+│  │ Preview: 2 / 5 prayers      │ │
+│  └─────────────────────────────┘ │
+└─────────────────────────────────┘
+```
+
+- **Icon picker**: clicking the icon circle opens an emoji picker overlay
+- **Sub-goals**: draggable to reorder (using existing Sortable.js, already vendored)
+- **Unit label**: optional free-text field; default "items"; shows live preview `{done} / {total} {unit}`
+- **Save**: validates name not empty, sub-goal names not empty if toggle is on
+
+---
+
+## 8. Login / Setup Page (`/login`)
+
+Centred card on the dark background:
 - HabitLab logo mark + wordmark
-- Email + password fields (styled to match design system)
-- "Sign in" button (`background: #2563eb`)
-- Setup mode (first user): shows "Create account" instead
-- No sidebar — full-width layout
+- Email + password fields
+- "Sign in" / "Create account" button (`background: #2563eb`)
+- No sidebar
 
 ---
 
-## 8. Settings Modal
+## 9. Settings
 
-Triggered from the gear icon in the nav rail. Rendered as a slide-in drawer (right side):
-- Account section: email display, change password, API token management
-- Data section: Export JSON, Import JSON
+Triggered from the gear icon in the nav rail. Slide-in drawer from the right:
+- Account: email display, change password, API token management
+- Data: Export JSON, Import JSON
 - Danger zone: Delete account
-- Styled to match the dark design system; no visual change to settings options themselves
+- Styled to match design system; no changes to settings functionality
 
 ---
 
-## 9. Data Model Changes
+## 10. Data Model Changes
 
-### New field on `Habit`: `sub_goals`
+### New fields on `Habit` (stored in existing JSON blob)
+
 ```json
 {
   "sub_goals": [
@@ -233,11 +246,13 @@ Triggered from the gear icon in the nav rail. Rendered as a slide-in drawer (rig
   "sub_goal_unit": "prayers"
 }
 ```
-- `sub_goals`: ordered list of `{id, name}` objects. Empty array = not a sub-goal habit
-- `sub_goal_unit`: display label for the progress count (default: "items")
-- Stored in the existing `DictHabit` JSON blob — no schema migration required
 
-### Extended completion record: `sub_goals_done`
+- `sub_goals`: ordered list of `{id, name}`. Empty array = not a sub-goal habit.
+- `sub_goal_unit`: display label (default: `"items"`).
+- No schema migration needed — stored in the existing dict blob.
+
+### Extended completion record
+
 ```json
 {
   "day": "2026-05-24",
@@ -247,68 +262,70 @@ Triggered from the gear icon in the nav rail. Rendered as a slide-in drawer (rig
   "sub_goals_done": ["fajr", "dhuhr"]
 }
 ```
-- `sub_goals_done`: list of sub-goal IDs completed that day
-- `done` is derived: `len(sub_goals_done) >= len(sub_goals)` (or `count >= target_count` for non-sub-goal habits)
-- `count` mirrors `len(sub_goals_done)` for sub-goal habits
+
+- `sub_goals_done`: list of completed sub-goal IDs for that day.
+- `done` derived: `len(sub_goals_done) >= len(sub_goals)`.
+- `count` mirrors `len(sub_goals_done)` for sub-goal habits.
 
 ### API Changes
-Two new endpoints:
 
-**`PUT /api/v1/habits/:id`** — extended body to accept `sub_goals` and `sub_goal_unit`  
-(Existing endpoint; just add fields to the `UpdateHabit` Pydantic model)
-
-**`POST /api/v1/habits/:id/completions`** — extended body:
-```json
-{
-  "date": "24-05-2026",
-  "sub_goal_id": "asr",
-  "done": true
-}
+**`PUT /api/v1/habits/:id`** — extend `UpdateHabit` Pydantic model to accept:
+```python
+sub_goals: list[dict] | None = None   # [{id, name}, ...]
+sub_goal_unit: str | None = None
 ```
-When `sub_goal_id` is present, toggle that specific sub-goal rather than the whole habit.  
-The endpoint recalculates `count` and `done` after the sub-goal update.
+
+**`POST /api/v1/habits/:id/completions`** — extend `Tick` model to accept:
+```python
+sub_goal_id: str | None = None   # if present, toggle this sub-goal only
+```
+When `sub_goal_id` is present: toggle that ID in `sub_goals_done`, recalculate `count` and `done`, save.  
+When absent: existing behaviour (toggle whole day).
 
 ---
 
-## 10. Frontend File Changes
+## 11. Frontend File Changes
 
 | File | Change |
 |---|---|
 | `static/css/styles.css` | Full rewrite — new design system |
-| `templates/base.html` | New nav rail layout, remove old sidebar slot |
-| `templates/index.html` | Rewrite — week strip + grouped list structure |
-| `templates/habit_detail.html` | Rewrite — stat cards + breakdown + monthly calendar |
-| `templates/heatmap.html` | Restyle only |
+| `templates/base.html` | New split-panel shell; remove old sidebar slot |
+| `templates/index.html` | Rewrite — list panel + detail panel structure |
 | `templates/login.html` | Restyle — centred card |
-| `templates/_habit_modal.html` | Rewrite — add sub-goal fields |
+| `templates/habit_detail.html` | Remove — detail is now rendered inside `index.html` right panel |
+| `templates/heatmap.html` | Restyle only (multi-year view, kept as-is) |
+| `templates/_habit_modal.html` | Rewrite — add sub-goal fields + unit label |
 | `templates/_settings_modal.html` | Restyle |
 | `templates/_note_modal.html` | Restyle |
-| `static/js/habits.js` | Full rewrite — new DOM structure |
-| `static/js/calendar.js` | Replace with `monthly.js` — circle calendar |
-| `static/js/heatmap.js` | Keep `renderSingleHeatmap` logic; update CSS class names only |
-| `static/js/app.js` | Keep; minor additions for sub-goal helpers |
-| `static/js/api.js` | Keep entirely |
-| `static/js/notes.js` | Keep; update selectors to match new modal HTML |
+| `static/js/habits.js` | Full rewrite — new DOM, split panel, sub-goal pills |
+| `static/js/calendar.js` | Replace with `monthly.js` — circle calendar, popup picker |
+| `static/js/heatmap.js` | Keep `renderSingleHeatmap` + step/reset logic; update CSS class names only |
+| `static/js/app.js` | Keep; add sub-goal helpers |
+| `static/js/api.js` | Keep entirely — no changes |
+| `static/js/notes.js` | Keep; update selectors to match restyled modal HTML |
 
 ---
 
-## 11. What Is NOT Changing
+## 12. What Is NOT Changing
 
 - All FastAPI routes (`routes/pages.py`, `routes/api.py`, `routes/metrics.py`)
 - Auth system (`app/auth.py`, `app/users.py`)
 - Storage layer (`storage/dict.py`, `storage/storage.py`)
 - Database models (`app/db.py`)
-- All existing API endpoints (except the two extensions noted above)
+- All existing API endpoints (except the two field extensions noted above)
 - `api.js` fetch wrapper
+- `heatmap.js` core rendering logic
+- Sortable.js vendor library
 
 ---
 
-## 12. Success Criteria
+## 13. Success Criteria
 
-1. Main list matches the TickTick Habits screenshot provided
-2. Salah (or any sub-goal habit) shows pill chips; tapping a pill updates that sub-goal only
-3. Habit detail shows a monthly circle calendar — navigable by month
-4. Sub-goal habits show a per-sub-goal breakdown on the detail page
-5. All screens use the unified dark design system
-6. All existing habits, completions, and stats continue to work unchanged
-7. No regressions on existing API token, import/export, or note features
+1. Main layout matches TickTick's Habits screenshot: nav rail + week strip + grouped list + split detail panel
+2. Salah (sub-goal habit) shows pill chips in the list; tapping a pill updates that sub-goal only
+3. Detail panel shows 6 stat cards, monthly circle calendar, and daily goals line chart
+4. Monthly calendar circles are tappable: toggle for regular habits; popup picker for sub-goal habits
+5. Add/Edit modal includes sub-goal list with drag-to-reorder and unit label field
+6. All screens use the unified dark design system
+7. All existing habits, completions, and stats continue working unchanged
+8. No regressions on import/export, API tokens, or notes features
