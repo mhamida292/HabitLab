@@ -128,10 +128,10 @@ button, input, select, textarea { font-family: inherit; }
     padding: 8px 0; gap: 4px; z-index: 60;
 }
 .nav-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
+    width: 36px; height: 36px; border-radius: 8px;
+    background: transparent;
     display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 700; color: #fff;
+    color: var(--accent);
     cursor: default; margin-bottom: 4px;
 }
 .nav-item {
@@ -259,7 +259,7 @@ button, input, select, textarea { font-family: inherit; }
     user-select: none;
 }
 .sg-pill:hover { border-color: var(--accent-light); color: var(--accent-light); }
-.sg-pill.done { background: #1a2d4a; border-color: var(--accent); color: var(--accent-light); }
+.sg-pill.done { background: var(--accent-sel); border-color: var(--accent); color: var(--accent-light); }
 .sg-pill.done::before { content: '✓ '; }
 
 /* ── Detail panel ───────────────────────────────────────────  */
@@ -796,4 +796,46 @@ textarea.finp { resize: vertical; min-height: 80px; }
         border-left: none; border-top: 1px solid var(--border);
         padding: 16px;
     }
+}
+
+/* ── Mobile scale-up ─────────────────────────────────────────  */
+@media (max-width: 767px) {
+    body { font-size: 15px; }
+
+    /* List topbar */
+    .list-topbar { height: 54px; padding: 0 16px; gap: 10px; }
+    .list-topbar-title { font-size: 17px; }
+
+    /* Habit rows */
+    .hrow { padding: 14px 16px; gap: 12px; }
+    .hrow-name { font-size: 15px; }
+    .hrow-meta { font-size: 13px; }
+    .hrow-icon { width: 36px; height: 36px; border-radius: 9px; }
+    .hrow-icon svg { width: 18px; height: 18px; }
+
+    /* Calendar pills / sub-goal pills */
+    .sg-pill { padding: 5px 12px; font-size: 13px; }
+
+    /* Stat cards */
+    .stat-card { padding: 14px 16px; }
+    .stat-card-label { font-size: 11px; }
+    .stat-card-value { font-size: 22px; }
+
+    /* Detail panel back button */
+    .detail-back { font-size: 14px; padding: 14px 16px 4px; }
+
+    /* Notes list */
+    .note-list-item { padding: 14px 16px; }
+    .note-list-title { font-size: 15px; }
+    .note-list-preview { font-size: 13px; }
+    .note-list-date { font-size: 12px; }
+
+    /* Mobile tab bar — slightly taller touch targets */
+    .mobile-tabs { height: calc(58px + env(safe-area-inset-bottom, 0px)); }
+    .habit-list { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+    .notes-list-col { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+    .toast { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+    .detail-panel { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
+    .mobile-tab { font-size: 11px; gap: 4px; }
+    .mobile-tab svg { width: 22px; height: 22px; }
 }

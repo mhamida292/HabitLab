@@ -1,5 +1,31 @@
 // beaverhabits/static/js/notes-page.js
 import { api, toast } from '/static/js/api.js';
+import { buildIconEl, applyIcons, isEmoji } from '/static/js/icons.js';
+
+// ── Habit icon helpers ─────────────────────────────────────────────────────
+// Build a styled pill span with proper icon (emoji or lucide SVG)
+function makeHabitPill(habit) {
+    const span = document.createElement('span');
+    span.className = 'note-habit-pill';
+    if (habit.icon) {
+        if (isEmoji(habit.icon)) {
+            span.appendChild(document.createTextNode(habit.icon + ' '));
+        } else {
+            const iconEl = buildIconEl(habit.icon, 11);
+            iconEl.style.cssText = 'margin-right:3px;vertical-align:middle;opacity:.7';
+            span.appendChild(iconEl);
+        }
+    }
+    span.appendChild(document.createTextNode(habit.name));
+    requestAnimationFrame(() => applyIcons());
+    return span;
+}
+
+// Plain text label for <option> elements (no SVG allowed in options)
+function habitOptionLabel(habit) {
+    if (habit.icon && isEmoji(habit.icon)) return habit.icon + ' ' + habit.name;
+    return habit.name;
+}
 
 // ── State ──────────────────────────────────────────────────────────────────
 let state = {
@@ -81,9 +107,18 @@ function renderFilters() {
         const chip = el('button', {
             class: 'notes-chip' + (state.filterHabitId === h.id ? ' active' : ''),
             onclick: () => applyFilter(h.id),
-        }, (h.icon || '') + ' ' + h.name);
+        });
+        if (h.icon && !isEmoji(h.icon)) {
+            const iconEl = buildIconEl(h.icon, 11);
+            iconEl.style.cssText = 'margin-right:3px;vertical-align:middle;opacity:.7';
+            chip.appendChild(iconEl);
+        } else if (h.icon) {
+            chip.appendChild(document.createTextNode(h.icon + ' '));
+        }
+        chip.appendChild(document.createTextNode(h.name));
         bar.appendChild(chip);
     }
+    requestAnimationFrame(() => applyIcons());
 }
 
 function applyFilter(habitId) {
@@ -147,7 +182,7 @@ function makeListItem(note) {
     });
     item.appendChild(el('div', { class: 'note-list-title' }, note.title || 'Untitled'));
     const meta = el('div', { class: 'note-list-meta' });
-    if (habit) meta.appendChild(el('span', { class: 'note-habit-pill' }, (habit.icon || '') + ' ' + habit.name));
+    if (habit) meta.appendChild(makeHabitPill(habit));
     meta.appendChild(el('span', { class: 'note-list-date' }, fmtDate(note.created_at)));
     item.appendChild(meta);
     if (note.body) item.appendChild(el('div', { class: 'note-list-preview' }, note.body));
@@ -195,7 +230,7 @@ function renderEditor(container, note) {
     if (!note.habit_id) noneOpt.selected = true;
     habitSel.appendChild(noneOpt);
     for (const h of state.habits) {
-        const opt = el('option', { value: h.id }, (h.icon || '') + ' ' + h.name);
+        const opt = el('option', { value: h.id }, habitOptionLabel(h));
         if (h.id === note.habit_id) opt.selected = true;
         habitSel.appendChild(opt);
     }
@@ -256,7 +291,7 @@ function makeCard(note) {
     if (note.body) card.appendChild(el('div', { class: 'note-card-body' }, note.body));
     const foot = el('div', { class: 'note-card-footer' });
     foot.appendChild(el('span', { class: 'note-card-date' }, fmtDate(note.created_at)));
-    if (habit) foot.appendChild(el('span', { class: 'note-habit-pill' }, (habit.icon || '') + ' ' + habit.name));
+    if (habit) foot.appendChild(makeHabitPill(habit));
     card.appendChild(foot);
     return card;
 }
