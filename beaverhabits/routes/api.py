@@ -419,9 +419,15 @@ async def get_habit_stats(
     monthly_records = [r for r in habit.records if r.day >= month_start and r.day <= today]
     monthly_checkins = sum(1 for r in monthly_records if r.count >= target)
 
-    # All-time rate — uses date_started so new habits aren't penalised
-    days_since_start = max(1, (today - started).days + 1)
-    all_time_rate = round(len(done_dates) / days_since_start * 100, 1)
+    # All-time rate — use earliest done date if it precedes date_started
+    # (handles retroactive checks on dates before the habit was created)
+    effective_start = started
+    if done_dates:
+        earliest_done = min(done_dates)
+        if earliest_done < effective_start:
+            effective_start = earliest_done
+    days_since_start = max(1, (today - effective_start).days + 1)
+    all_time_rate = min(100.0, round(len(done_dates) / days_since_start * 100, 1))
 
     total_completion = sum(r.count for r in habit.records)
 

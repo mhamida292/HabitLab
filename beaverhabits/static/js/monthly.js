@@ -112,6 +112,15 @@ function paintCalCircle(cell, rec, subGoals, target) {
 
     const dayNum = new Date(cell.dataset.date + 'T00:00:00').getDate();
 
+    // Never render done/partial state for future dates — data may exist but shouldn't display
+    const isFuture = cell.classList.contains('future');
+    if (isFuture) {
+        const span = document.createElement('span');
+        span.textContent = dayNum;
+        cell.appendChild(span);
+        return;
+    }
+
     if (rec.done || rec.count >= target) {
         cell.classList.add('done');
         cell.innerHTML = '<span>✓</span>';
