@@ -95,3 +95,42 @@ def test_update_habit_sub_goals(habit_with_sub_goals):
     response = format_json_response(habit_with_sub_goals)
     assert response["sub_goals"] == new_sub_goals
     assert response["sub_goal_unit"] == new_unit
+
+
+@pytest.mark.asyncio
+async def test_tick_sub_goal_id_toggles_sub_goals_done(authed_client, habit):
+    """Test that ticking a sub_goal_id toggles the sub-goal's completion state."""
+    # Give the habit sub_goals
+    sub_goals = [{"id": "fajr", "name": "Fajr"}, {"id": "dhuhr", "name": "Dhuhr"}]
+    await authed_client.put(f"/api/v1/habits/{habit['id']}", json={"sub_goals": sub_goals})
+
+    today = datetime.date.today().strftime("%Y-%m-%d")
+
+    # Tick fajr
+    resp = await authed_client.post(
+        f"/api/v1/habits/{habit['id']}/completions",
+        json={"date": today, "date_fmt": "%Y-%m-%d", "sub_goal_id": "fajr"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "fajr" in body["sub_goals_done"]
+    assert body["count"] == 1
+    assert body["done"] is False  # only 1 of 2 done
+
+    # Tick dhuhr — now both done
+    resp2 = await authed_client.post(
+        f"/api/v1/habits/{habit['id']}/completions",
+        json={"date": today, "date_fmt": "%Y-%m-%d", "sub_goal_id": "dhuhr"},
+    )
+    body2 = resp2.json()
+    assert body2["done"] is True
+    assert body2["count"] == 2
+
+    # Untick fajr (toggle off)
+    resp3 = await authed_client.post(
+        f"/api/v1/habits/{habit['id']}/completions",
+        json={"date": today, "date_fmt": "%Y-%m-%d", "sub_goal_id": "fajr"},
+    )
+    body3 = resp3.json()
+    assert "fajr" not in body3["sub_goals_done"]
+    assert body3["count"] == 1

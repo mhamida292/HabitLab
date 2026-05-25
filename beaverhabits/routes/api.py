@@ -303,6 +303,7 @@ class Tick(BaseModel):
     date: str
     text: str | None = None
     date_fmt: str = "%d-%m-%Y"
+    sub_goal_id: str | None = None  # if present, toggle this sub-goal only
 
 
 @api_router.post("/habits/{habit_id}/completions", tags=["habits"])
@@ -320,6 +321,43 @@ async def put_habit_completions(
     habit = await habit_list.get_habit_by(habit_id)
     if habit is None:
         raise HTTPException(status_code=404, detail="Habit not found")
+
+    if tick.sub_goal_id is not None:
+        # Validate sub_goal_id belongs to this habit
+        valid_ids = {sg["id"] for sg in habit.sub_goals}
+        if tick.sub_goal_id not in valid_ids:
+            raise HTTPException(status_code=400, detail=f"Unknown sub_goal_id: {tick.sub_goal_id}")
+
+        # Get existing record for this day (may not exist yet)
+        existing_record = habit.ticked_data.get(day)
+        if existing_record is not None:
+            current_done = list(existing_record.sub_goals_done)
+        else:
+            current_done = []
+
+        # Toggle
+        if tick.sub_goal_id in current_done:
+            current_done.remove(tick.sub_goal_id)
+        else:
+            current_done.append(tick.sub_goal_id)
+
+        new_count = len(current_done)
+        new_done = new_count >= len(habit.sub_goals)
+
+        # tick() sets count + done on the record (creates if missing)
+        record = await habit.tick(day, count=new_count)
+        record.data["done"] = new_done
+        record.data["sub_goals_done"] = current_done
+
+        await _storage.save_user_habit_list(user, habit_list)
+        return {
+            "day": day.strftime(tick.date_fmt),
+            "done": new_done,
+            "count": new_count,
+            "target_count": habit.target_count,
+            "sub_goals_done": current_done,
+        }
+
     record = await habit.tick(day, done=tick.done, text=tick.text, count=tick.count)
     await _storage.save_user_habit_list(user, habit_list)
     return {
