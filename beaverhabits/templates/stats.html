@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Stats · HabitLab{% endblock %}
+{% block nav_stats %}active{% endblock %}
+
+{% block panels %}
+<div class="list-panel" style="width:100%;max-width:100%">
+    <div class="list-topbar">
+        <span class="list-topbar-title">Stats</span>
+    </div>
+    <div style="padding:20px;overflow-y:auto;flex:1" id="statsRoot">Loading…</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    import { api } from '/static/js/api.js';
+    api.get('/api/v1/habits').then(habits => {
+        document.getElementById('statsRoot').innerHTML =
+            `<p style="color:var(--text-secondary)">${habits.length} habit${habits.length !== 1 ? 's' : ''} tracked.</p>`;
+    });
+</script>
+{% endblock %}
