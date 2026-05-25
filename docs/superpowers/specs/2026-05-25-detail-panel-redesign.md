@@ -39,10 +39,10 @@ Sections stack top-to-bottom in this order:
    - Week labels: W1 … W7, "now"  
 
 3. **Recent notes**  
-   - Last 2 records where `record.text` is non-empty, sorted newest-first  
-   - Notes are stored as `text` on completion records — no separate API call needed; filtered client-side from the records already on the habit object  
-   - Each note shows the date + body text; clicking opens `openNoteEditor({ habitId, date, existing, onSave })` for that date  
-   - "+ Add note" button opens `openNoteEditor` for today's date  
+   - Last 2 notes where `note.habit_id === currentHabitId`, sorted newest-first  
+   - Fetched from `GET /api/v1/notes?habit_id={id}` (new endpoint — see notes app spec)  
+   - Each note shows the title + date; clicking opens the note in the notes page  
+   - "+ Add note" button creates a new note pre-linked to this habit (navigates to notes page with a new note pre-filled)  
    - If the habit has no notes yet, shows only the "+ Add note" prompt  
 
 ---
@@ -85,7 +85,7 @@ One `@media (max-width: 767px)` breakpoint handles the switch.
 ### `beaverhabits/static/js/habits.js`
 - `renderDetail(habit)`: populate both columns
 - `renderTrendChart(records)`: compute 8-week buckets from records, render bar chart as inline SVG or CSS flex bars
-- `renderRecentNotes(records)`: filter records where `record.text` is non-empty, take last 2 sorted by date descending, render into `#detailNotes`. No API call — data already in hand.
+- `renderRecentNotes(habitId)`: fetch `GET /api/v1/notes?habit_id={id}`, take last 2 sorted by `created_at` descending, render into `#detailNotes`.
 - Sub-goals section: show/hide `#detailSubGoals` based on whether `habit.sub_goals.length > 0`; render today's sub-goals with checkboxes wired to existing sub-goal toggle logic
 
 ---
@@ -97,7 +97,7 @@ No new backend endpoints required.
 - **Stats**: existing `/api/v1/habits/{id}/stats`
 - **Records**: already included in habit list response (`records` field)
 - **Weekly trend**: computed client-side from records
-- **Notes**: `record.text` on completion records — already in the habits list response, no additional fetch
+- **Notes**: `GET /api/v1/notes?habit_id={id}` — see notes app spec (`2026-05-25-notes-app-design.md`)
 - **Sub-goals**: already on the habit object
 
 ---
