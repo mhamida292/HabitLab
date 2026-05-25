@@ -301,6 +301,173 @@ function buildSubgoalRow(h, activeIso) {
     return row;
 }
 
+/**
+ * Compute 8-week check-in rate buckets from a records array.
+ * Returns [{pct: 0.0-1.0, isCurrent: bool}, ...] oldest-first.
+ */
+function computeWeeklyTrend(records, weeks = 8) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const doneSet = new Set(
+        records.filter(r => r.done).map(r => r.day)
+    );
+
+    // Find the Monday of the current week
+    const dayOfWeek = today.getDay(); // 0=Sun
+    const daysFromMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const currentMonday = new Date(today);
+    currentMonday.setDate(today.getDate() - daysFromMon);
+
+    const result = [];
+    for (let w = weeks - 1; w >= 0; w--) {
+        const weekMonday = new Date(currentMonday);
+        weekMonday.setDate(currentMonday.getDate() - w * 7);
+        const weekSunday = new Date(weekMonday);
+        weekSunday.setDate(weekMonday.getDate() + 6);
+
+        const effectiveEnd = w === 0 ? today : weekSunday;
+        let total = 0, done = 0;
+
+        const cursor = new Date(weekMonday);
+        while (cursor <= effectiveEnd) {
+            total++;
+            const iso = cursor.toISOString().slice(0, 10);
+            if (doneSet.has(iso)) done++;
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        result.push({ pct: total > 0 ? done / total : 0, isCurrent: w === 0 });
+    }
+    return result;
+}
+
+function renderTrendChart(records) {
+    const bars = document.getElementById('trendBars');
+    const labels = document.getElementById('trendLabels');
+    if (!bars || !labels) return;
+
+    const weeks = computeWeeklyTrend(records, 8);
+    const maxPct = Math.max(...weeks.map(w => w.pct), 0.01);
+
+    bars.innerHTML = '';
+    labels.innerHTML = '';
+
+    weeks.forEach((w, i) => {
+        const bar = document.createElement('div');
+        bar.className = 'trend-bar' + (w.isCurrent ? ' current' : '');
+        bar.style.height = Math.max(w.pct / maxPct * 100, 4) + '%';
+        bar.title = Math.round(w.pct * 100) + '%';
+        bars.appendChild(bar);
+
+        const lbl = document.createElement('div');
+        lbl.className = 'trend-bar-lbl' + (w.isCurrent ? ' current' : '');
+        lbl.textContent = w.isCurrent ? 'now' : `W${i + 1}`;
+        labels.appendChild(lbl);
+    });
+}
+
+function renderSubGoalsSection(habit) {
+    const section = document.getElementById('detailSubGoals');
+    const list = document.getElementById('sgTodayList');
+    const fill = document.getElementById('sgProgressFill');
+    if (!section || !list || !fill) return;
+
+    const subGoals = habit.sub_goals || [];
+    if (subGoals.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = 'block';
+
+    const today = new Date().toISOString().slice(0, 10);
+    const todayRec = (habit.records || []).find(r => r.day === today);
+    const doneSgIds = new Set(todayRec?.sub_goals_done || []);
+
+    list.innerHTML = '';
+    subGoals.forEach(sg => {
+        const isDone = doneSgIds.has(sg.id);
+        const row = document.createElement('div');
+        row.className = 'detail-sg-row';
+
+        const check = document.createElement('div');
+        check.className = 'detail-sg-check' + (isDone ? ' done' : '');
+        check.addEventListener('click', () => onSgCheckClick(habit.id, sg.id, today));
+
+        const name = document.createElement('span');
+        name.className = 'detail-sg-name' + (isDone ? ' done' : '');
+        name.textContent = sg.name;
+
+        row.appendChild(check);
+        row.appendChild(name);
+        list.appendChild(row);
+    });
+
+    const pct = subGoals.length > 0 ? (doneSgIds.size / subGoals.length * 100) : 0;
+    fill.style.width = pct + '%';
+}
+
+async function onSgCheckClick(habitId, sgId, dateIso) {
+    try {
+        const result = await api.post(`/api/v1/habits/${habitId}/completions`, {
+            date: dateIso, date_fmt: '%Y-%m-%d', sub_goal_id: sgId,
+        });
+        const habit = allHabits.find(h => h.id === habitId);
+        if (habit) {
+            let rec = habit.records?.find(r => r.day === dateIso);
+            if (!rec) {
+                rec = { day: dateIso, count: 0, done: false, sub_goals_done: [] };
+                (habit.records = habit.records || []).push(rec);
+            }
+            rec.sub_goals_done = result.sub_goals_done;
+            rec.count = result.count;
+            rec.done = result.done;
+            renderSubGoalsSection(habit);
+        }
+    } catch (e) {
+        console.error('Failed to toggle sub-goal', e);
+    }
+}
+
+async function renderRecentNotes(habitId) {
+    const list = document.getElementById('detailNotesList');
+    const addBtn = document.getElementById('detailNotesAdd');
+    if (!list || !addBtn) return;
+
+    list.innerHTML = '';
+
+    try {
+        const notes = await api.get(`/api/v1/notes?habit_id=${habitId}`);
+        const recent = notes.slice(0, 2); // already newest-first from API
+
+        for (const note of recent) {
+            const item = document.createElement('div');
+            item.className = 'detail-note-item';
+            item.addEventListener('click', () => {
+                location.href = `/notes?id=${note.id}`;
+            });
+
+            const date = document.createElement('div');
+            date.className = 'detail-note-date';
+            date.textContent = new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            const title = document.createElement('div');
+            title.className = 'detail-note-title';
+            title.textContent = note.title || 'Untitled';
+
+            item.appendChild(date);
+            item.appendChild(title);
+            list.appendChild(item);
+        }
+    } catch (e) {
+        // silently fail — notes are non-critical
+    }
+
+    addBtn.onclick = () => {
+        location.href = `/notes?new=1&habit_id=${habitId}`;
+    };
+}
+
 // ── Refresh detail stat cards (called after each toggle) ──────
 async function refreshDetailStats(id) {
     if (id !== selectedHabitId) return;
@@ -310,8 +477,6 @@ async function refreshDetailStats(id) {
         document.getElementById('statTotalCheckins').textContent    = stats.total;
         document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_checkin_rate}%`;
         document.getElementById('statStreak').textContent           = stats.streak;
-        document.getElementById('statMonthlyCompletion').textContent = stats.monthly_completion;
-        document.getElementById('statTotalCompletion').textContent  = stats.total_completion;
     } catch { /* leave stale */ }
 }
 
@@ -343,12 +508,15 @@ async function selectHabit(id) {
         document.getElementById('statTotalCheckins').textContent    = stats.total;
         document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_checkin_rate}%`;
         document.getElementById('statStreak').textContent           = stats.streak;
-        document.getElementById('statMonthlyCompletion').textContent = stats.monthly_completion;
-        document.getElementById('statTotalCompletion').textContent  = stats.total_completion;
     } catch { /* leave stale */ }
 
     // Mount calendar
     mountCalendar(h.id, h.sub_goals || [], h.target_count, h.records || []);
+
+    // Render right column
+    renderTrendChart(h.records || []);
+    renderSubGoalsSection(h);
+    renderRecentNotes(h.id);
 }
 
 window.closeDetail = function() {
