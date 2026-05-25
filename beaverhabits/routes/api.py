@@ -102,6 +102,8 @@ async def get_habits(
                 if period is not None
                 else None
             ),
+            "sub_goals": x.sub_goals,
+            "sub_goal_unit": x.sub_goal_unit,
         })
     return out
 
@@ -174,6 +176,8 @@ class UpdateHabit(BaseModel):
     icon: str | None = None
     target_count: int | None = None
     date_started: str | None = None
+    sub_goals: list[dict] | None = None       # [{id, name}, ...]
+    sub_goal_unit: str | None = None
 
 
 @api_router.put("/habits/{habit_id}", tags=["habits"])
@@ -212,6 +216,12 @@ async def put_habit(
             existing_habit.date_started = datetime.date.fromisoformat(habit.date_started)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date_started format")
+    if habit.sub_goals is not None:
+        existing_habit.sub_goals = habit.sub_goals
+        if habit.sub_goals:
+            existing_habit.target_count = len(habit.sub_goals)
+    if habit.sub_goal_unit is not None:
+        existing_habit.sub_goal_unit = habit.sub_goal_unit
 
     await _storage.save_user_habit_list(user, habit_list)
     return format_json_response(existing_habit)
@@ -510,6 +520,7 @@ def _record_to_dict(r) -> dict:
         "done": bool(r.done),
         "count": int(getattr(r, "count", 1 if r.done else 0)),
         "text": getattr(r, "text", "") or "",
+        "sub_goals_done": getattr(r, "sub_goals_done", []),
     }
 
 
@@ -533,6 +544,8 @@ def format_json_response(habit: Habit) -> dict:
         "icon": habit.icon,
         "target_count": habit.target_count,
         "date_started": habit.date_started.isoformat(),
+        "sub_goals": habit.sub_goals,
+        "sub_goal_unit": habit.sub_goal_unit,
     }
 
 
