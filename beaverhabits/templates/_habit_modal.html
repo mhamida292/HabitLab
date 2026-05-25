@@ -1,48 +1,59 @@
 <div class="ov" id="habitOv">
     <div class="modal">
         <div class="mh">
-            <div class="mt" id="habitModalTitle">New habit</div>
+            <div class="mt" id="habitModalTitle">New Habit</div>
             <button class="mx" onclick="closeHabitModal()">&times;</button>
         </div>
         <div class="mb">
-            <div class="fg">
-                <label class="fl">Name</label>
-                <input class="finp" id="habitNameIn" maxlength="80" placeholder="e.g. Drink water">
-            </div>
-            <div class="fg">
-                <label class="fl">Icon</label>
-                <div class="icon-row">
-                    <input class="finp icon-input" id="habitIconIn" maxlength="4" value="📌" style="width:64px;text-align:center;font-size:22px">
-                    <div class="icon-grid" id="iconGrid"></div>
+
+            <!-- Icon + Name row -->
+            <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
+                <button class="hrow-icon" id="habitIconBtn" style="flex-shrink:0;width:44px;height:44px;font-size:22px;cursor:pointer;border:1px solid var(--border);background:var(--bg-elevated);border-radius:10px" onclick="openIconPicker()">📌</button>
+                <div class="fg" style="flex:1">
+                    <label class="fl">Name</label>
+                    <input class="finp" id="habitNameIn" maxlength="80" placeholder="e.g. Salah">
                 </div>
             </div>
+
+            <!-- Tag -->
             <div class="fg">
-                <label class="fl">Frequency</label>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <input class="finp" id="habitTargetIn" type="number" min="1" max="99" value="1" style="width:80px">
-                    <span style="font-size:13px;color:var(--text-dim)">times per</span>
-                    <select class="finp" id="habitPeriodIn" style="width:110px">
-                        <option value="D">day</option>
-                        <option value="W">week</option>
-                    </select>
+                <label class="fl">Tag (group)</label>
+                <input class="finp" id="habitTagIn" placeholder="Morning, Evening, Health…">
+            </div>
+
+            <!-- Sub-goals toggle -->
+            <div class="fg">
+                <div class="srow">
+                    <div>
+                        <div class="slabel" style="font-size:13px">Has sub-goals</div>
+                        <div class="cwarn">Named checkpoints within one habit (e.g. prayers)</div>
+                    </div>
+                    <label style="cursor:pointer;display:flex;align-items:center;gap:6px">
+                        <input type="checkbox" id="habitSubgoalToggle" style="width:16px;height:16px;accent-color:var(--accent)" onchange="toggleSubgoalSection()">
+                    </label>
                 </div>
-                <div class="cwarn" id="habitFreqHint" style="margin-top:4px;text-align:left">Each click adds one. The day shows as fully done when count reaches the target.</div>
             </div>
-            <div class="fg">
-                <label class="fl">Date started</label>
-                <input class="finp" id="habitStartedIn" type="date" style="width:180px">
-                <div class="cwarn" style="margin-top:4px;text-align:left">Percentage stats are scoped to days from this date onward.</div>
+
+            <!-- Sub-goal section (shown when toggle ON) -->
+            <div id="subgoalSection" style="display:none;flex-direction:column;gap:10px">
+                <div class="fg">
+                    <label class="fl">Sub-goals</label>
+                    <div class="sg-list" id="sgModalList"></div>
+                    <button class="sg-add-btn" onclick="addSubgoalRow()" type="button">＋ Add sub-goal</button>
+                </div>
+                <div class="fg">
+                    <label class="fl">Unit label</label>
+                    <input class="finp" id="habitUnitIn" placeholder="prayers" style="width:160px">
+                    <div class="sg-preview" id="sgPreview">Preview: 0 / 0 items</div>
+                </div>
             </div>
-            <div class="fg">
-                <label class="fl">Tags (comma-separated)</label>
-                <input class="finp" id="habitTagsIn" placeholder="health, learning">
-            </div>
+
         </div>
         <div class="mf">
-            <button class="bdng" id="habitDeleteBtn" style="visibility:hidden">Delete</button>
+            <button class="bdng" id="habitDeleteBtn" style="visibility:hidden" onclick="deleteCurrentHabit()">Delete</button>
             <div style="display:flex;gap:8px">
                 <button class="bgho" onclick="closeHabitModal()">Cancel</button>
-                <button class="bpri" id="habitSaveBtn">Save</button>
+                <button class="bpri" id="habitSaveBtn" onclick="saveHabit()">Save</button>
             </div>
         </div>
     </div>
