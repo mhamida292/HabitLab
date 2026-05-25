@@ -1,408 +1,359 @@
+// beaverhabits/static/js/habits.js
 import { api, toast } from '/static/js/api.js';
+import { mountCalendar, renderDailyChart } from '/static/js/monthly.js';
 import { openNoteEditor } from '/static/js/notes.js';
 
-const ICON_PALETTE = [
-    '📌','💧','📚','🏃','🧘','🙏','💪','🌅',
-    '🍎','💤','✍️','🎵','🎨','🌱','💊','🚶',
-    '🧠','❤️','🚴','🛌','📖','🥗','🧹','📞',
-];
-
+// ── State ─────────────────────────────────────────────────────
 let allHabits = [];
-let activeFilter = 'all';
-let activeTag = null;
+let activeDay = null;       // ISO string 'YYYY-MM-DD' — null = today
+let selectedHabitId = null;
 let searchTerm = '';
-let sortMode = 'manual';
-let editingHabitId = null;
 
-function dateNDaysAgo(n) {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - n);
-    return d;
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+// ── Utils ─────────────────────────────────────────────────────
+function isoToday() {
+    const d = new Date(); d.setHours(0,0,0,0);
+    return d.toISOString().slice(0, 10);
 }
-function isoDate(d) { return d.toISOString().slice(0, 10); }
-
-function recordFor(records, isoDay) {
-    return records?.find(r => r.day === isoDay) || null;
+function isoNDaysAgo(n) {
+    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - n);
+    return d.toISOString().slice(0, 10);
 }
+function recordForDay(records, iso) {
+    return records?.find(r => r.day === iso) || null;
+}
+function getActiveIso() { return activeDay || isoToday(); }
 
-function paintCheckbox(chk, count, target) {
-    const done = count >= target;
-    chk.dataset.count = count;
-    chk.dataset.done = done ? '1' : '0';
-    if (done) {
-        chk.dataset.status = 'yes';
-        chk.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
-    } else if (count > 0) {
-        chk.dataset.status = '';
-        chk.innerHTML = `<span class="hchk-count">${count}/${target}</span>`;
-    } else {
-        chk.dataset.status = '';
-        chk.innerHTML = '';
+// ── Week strip ────────────────────────────────────────────────
+function renderWeekStrip() {
+    const container = document.getElementById('weekDays');
+    if (!container) return;
+    container.innerHTML = '';
+    const todayIso = isoToday();
+    const activeIso = getActiveIso();
+
+    for (let i = 6; i >= 0; i--) {
+        const iso = isoNDaysAgo(i);
+        const d = new Date(iso + 'T00:00:00');
+        const col = document.createElement('div');
+        col.className = 'week-day' + (iso === todayIso ? ' today' : '') + (iso === activeIso ? ' active' : '');
+        col.dataset.iso = iso;
+
+        const label = document.createElement('div');
+        label.className = 'wd-label';
+        label.textContent = DAY_NAMES[d.getDay()];
+
+        const num = document.createElement('div');
+        num.className = 'wd-num';
+        num.textContent = d.getDate();
+
+        const dot = document.createElement('div');
+        dot.className = 'wd-dot';
+        // Dot: count habits done on this day
+        const done = allHabits.filter(h => {
+            const rec = recordForDay(h.records, iso);
+            return rec && (rec.done || rec.count >= h.target_count);
+        }).length;
+        if (done > 0 && done < allHabits.length) dot.classList.add('partial');
+        else if (done === allHabits.length && allHabits.length > 0) dot.classList.add('full');
+
+        col.append(label, num, dot);
+        col.addEventListener('click', () => {
+            activeDay = iso === todayIso ? null : iso;
+            renderWeekStrip();
+            renderHabitList();
+            updateActiveDayChip();
+        });
+        container.appendChild(col);
     }
 }
 
-function attachCheckHandlers(chk, habit, getRecords, target) {
-    let pressTimer = null;
-    let longPressed = false;
+function updateActiveDayChip() {
+    const chip = document.getElementById('activeDayChip');
+    const label = document.getElementById('activeDayLabel');
+    if (!chip || !label) return;
+    if (activeDay) {
+        const d = new Date(activeDay + 'T00:00:00');
+        label.textContent = `📌 ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+        chip.style.display = 'flex';
+    } else {
+        chip.style.display = 'none';
+    }
+}
 
-    const startPress = () => {
-        longPressed = false;
-        pressTimer = setTimeout(() => {
-            longPressed = true;
-            // Long press: if target > 1, reset count to 0; else open note editor.
-            if (target > 1) {
-                resetDay(chk, habit);
-            } else {
-                const records = getRecords();
-                const existing = recordFor(records, chk.dataset.date);
-                openNoteEditor({
-                    habitId: habit.id,
-                    date: chk.dataset.date,
-                    existing,
-                    onSave: refreshHabits,
-                });
-            }
-        }, 500);
-    };
-    const endPress = () => clearTimeout(pressTimer);
+// ── Habit list rendering ──────────────────────────────────────
+function groupByFirstTag(habits) {
+    const groups = new Map(); // tag → [habit]
+    for (const h of habits) {
+        const tag = h.tags?.[0] || 'Others';
+        if (!groups.has(tag)) groups.set(tag, []);
+        groups.get(tag).push(h);
+    }
+    // "Others" always last
+    const sorted = [...groups.entries()].sort(([a], [b]) => {
+        if (a === 'Others') return 1;
+        if (b === 'Others') return -1;
+        return a.localeCompare(b);
+    });
+    return sorted;
+}
 
-    chk.addEventListener('mousedown', startPress);
-    chk.addEventListener('touchstart', startPress, { passive: true });
-    chk.addEventListener('mouseup', endPress);
-    chk.addEventListener('touchend', endPress);
-    chk.addEventListener('mouseleave', endPress);
+function renderHabitList() {
+    const container = document.getElementById('habitList');
+    if (!container) return;
+    container.innerHTML = '';
+    const activeIso = getActiveIso();
 
-    chk.addEventListener('click', async () => {
-        if (longPressed) return;
-        const cur = parseInt(chk.dataset.count || '0', 10);
-        let nextCount;
-        if (target === 1) {
-            nextCount = cur >= 1 ? 0 : 1;
-        } else {
-            nextCount = cur >= target ? 0 : cur + 1;
+    const filtered = searchTerm
+        ? allHabits.filter(h => h.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        : allHabits;
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:13px">No habits yet. Click + to add one.</div>';
+        return;
+    }
+
+    const groups = groupByFirstTag(filtered);
+    const collapsedGroups = new Set(JSON.parse(sessionStorage.getItem('collapsedGroups') || '[]'));
+
+    for (const [tag, habits] of groups) {
+        // Group header
+        const header = document.createElement('div');
+        header.className = 'group-header' + (collapsedGroups.has(tag) ? ' collapsed' : '');
+        header.innerHTML = `<span class="gh-arrow">▼</span><span>${tag}</span><span class="gh-count">${habits.length}</span>`;
+        header.addEventListener('click', () => {
+            if (collapsedGroups.has(tag)) collapsedGroups.delete(tag);
+            else collapsedGroups.add(tag);
+            sessionStorage.setItem('collapsedGroups', JSON.stringify([...collapsedGroups]));
+            renderHabitList();
+        });
+        container.appendChild(header);
+
+        if (collapsedGroups.has(tag)) continue;
+
+        for (const h of habits) {
+            const row = h.sub_goals?.length > 0
+                ? buildSubgoalRow(h, activeIso)
+                : buildRegularRow(h, activeIso);
+            container.appendChild(row);
         }
-        const prev = cur;
-        paintCheckbox(chk, nextCount, target);
+    }
+}
+
+// ── Regular habit row ─────────────────────────────────────────
+function buildRegularRow(h, activeIso) {
+    const rec = recordForDay(h.records, activeIso);
+    const isDone = rec && (rec.done || rec.count >= h.target_count);
+
+    const row = document.createElement('div');
+    row.className = 'hrow' + (h.id === selectedHabitId ? ' selected' : '');
+    row.dataset.habitId = h.id;
+
+    const icon = document.createElement('div');
+    icon.className = 'hrow-icon';
+    icon.textContent = h.icon || '📌';
+
+    const body = document.createElement('div');
+    body.className = 'hrow-body';
+
+    const name = document.createElement('div');
+    name.className = 'hrow-name' + (isDone ? ' done' : '');
+    name.textContent = h.name;
+
+    const meta = document.createElement('div');
+    meta.className = 'hrow-meta';
+    // Streak badge
+    const streakText = `🔥 ${h._streak ?? '—'}`;
+    const daysText = `💧 ${h._total ?? '—'} days`;
+    meta.innerHTML = `<span>${daysText}</span><span>${streakText}</span>`;
+
+    body.append(name, meta);
+
+    const toggle = document.createElement('button');
+    toggle.className = 'hrow-toggle' + (isDone ? ' done' : '');
+    toggle.title = isDone ? 'Mark undone' : 'Mark done';
+    toggle.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const newCount = isDone ? 0 : h.target_count;
+        const prevClass = toggle.className;
+        toggle.className = 'hrow-toggle' + (newCount >= h.target_count ? ' done' : '');
         try {
-            await api.post(`/api/v1/habits/${habit.id}/completions`, {
-                count: nextCount,
-                date: chk.dataset.date,
-                date_fmt: '%Y-%m-%d',
+            await api.post(`/api/v1/habits/${h.id}/completions`, {
+                count: newCount, date: activeIso, date_fmt: '%Y-%m-%d',
             });
+            await refreshHabits();
         } catch (err) {
-            paintCheckbox(chk, prev, target);
+            toggle.className = prevClass;
             toast(err.message, 'error');
         }
     });
-}
 
-async function resetDay(chk, habit) {
-    const target = parseInt(chk.dataset.target || '1', 10);
-    const prev = parseInt(chk.dataset.count || '0', 10);
-    paintCheckbox(chk, 0, target);
-    try {
-        await api.post(`/api/v1/habits/${habit.id}/completions`, {
-            count: 0,
-            date: chk.dataset.date,
-            date_fmt: '%Y-%m-%d',
-        });
-    } catch (err) {
-        paintCheckbox(chk, prev, target);
-        toast(err.message, 'error');
-    }
-}
-
-async function fetchHabitDetail(habitId) {
-    try { return await api.get(`/api/v1/habits/${habitId}`); }
-    catch { return null; }
-}
-
-function renderRow(habit) {
-    const row = document.createElement('div');
-    row.className = 'hrow';
-    row.dataset.habitId = habit.id;
-
-    const isWeekly = habit.period && habit.period.period_type === 'W';
-    const target = isWeekly ? 1 : (habit.target_count || 1);
-
-    const icon = document.createElement('div');
-    icon.className = 'hicon';
-    icon.textContent = habit.icon || '📌';
-    icon.title = 'Drag to reorder · Click to view detail';
-    icon.addEventListener('click', () => window.location = `/habits/${habit.id}`);
-
-    const name = document.createElement('div');
-    name.className = 'hname';
-    let subtitle = '';
-    if (isWeekly) subtitle = ` · ${habit.period.target_count}×/week`;
-    else if (target > 1) subtitle = ` · ${target}×/day`;
-    name.textContent = habit.name + subtitle;
-    name.addEventListener('click', () => window.location = `/habits/${habit.id}`);
-
-    const checks = document.createElement('div');
-    checks.className = 'hchecks';
-
-    let cachedRecords = habit.records || [];
-    const getRecords = () => cachedRecords;
-
-    for (let i = 6; i >= 0; i--) {
-        const d = dateNDaysAgo(i);
-        const iso = isoDate(d);
-        const rec = recordFor(cachedRecords, iso);
-        const cnt = rec ? (rec.count ?? (rec.done ? 1 : 0)) : 0;
-        const chk = document.createElement('button');
-        chk.className = 'hchk';
-        chk.dataset.date = iso;
-        chk.dataset.target = target;
-        chk.title = iso;
-        paintCheckbox(chk, cnt, target);
-        attachCheckHandlers(chk, habit, getRecords, target);
-        checks.appendChild(chk);
-    }
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'ibtn';
-    editBtn.textContent = '✎';
-    editBtn.title = 'Edit';
-    editBtn.addEventListener('click', (e) => { e.stopPropagation(); openHabitModal(habit); });
-
-    row.append(icon, name, checks, editBtn);
-
-    fetchHabitDetail(habit.id).then(full => {
-        if (!full) return;
-        cachedRecords = full.records || [];
-        const recordsByDay = new Map(cachedRecords.map(r => [r.day, r]));
-        checks.querySelectorAll('.hchk').forEach(chk => {
-            const r = recordsByDay.get(chk.dataset.date);
-            const cnt = r ? (r.count ?? (r.done ? 1 : 0)) : 0;
-            paintCheckbox(chk, cnt, target);
-        });
-    });
-
+    row.append(icon, body, toggle);
+    row.addEventListener('click', () => selectHabit(h.id));
     return row;
 }
 
-// ── Icon grid in modal ───────────────────────────────────────────
-function renderIconGrid(selected) {
-    const g = document.getElementById('iconGrid');
-    if (!g) return;
-    g.innerHTML = '';
-    ICON_PALETTE.forEach(emoji => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = emoji;
-        if (emoji === selected) b.classList.add('on');
-        b.addEventListener('click', () => {
-            document.getElementById('habitIconIn').value = emoji;
-            g.querySelectorAll('button').forEach(x => x.classList.remove('on'));
-            b.classList.add('on');
+// ── Sub-goal habit row ────────────────────────────────────────
+function buildSubgoalRow(h, activeIso) {
+    const rec = recordForDay(h.records, activeIso);
+    const doneDoneIds = new Set(rec?.sub_goals_done || []);
+    const total = h.sub_goals.length;
+    const doneCount = doneDoneIds.size;
+    const pct = total > 0 ? doneCount / total : 0;
+
+    const row = document.createElement('div');
+    row.className = 'hrow' + (h.id === selectedHabitId ? ' selected' : '');
+    row.dataset.habitId = h.id;
+
+    // Progress ring SVG
+    const R = 12; const CX = 15; const CY = 15;
+    const circumference = 2 * Math.PI * R;
+    const dash = pct * circumference;
+    const icon = document.createElement('div');
+    icon.className = 'hrow-icon';
+    icon.style.background = 'none';
+    icon.style.border = 'none';
+    icon.innerHTML = `<svg class="progress-ring" viewBox="0 0 30 30">
+        <circle class="track" cx="${CX}" cy="${CY}" r="${R}"/>
+        <circle class="fill" cx="${CX}" cy="${CY}" r="${R}"
+            stroke-dasharray="${dash.toFixed(2)} ${(circumference - dash).toFixed(2)}"
+            stroke-dashoffset="${(circumference / 4).toFixed(2)}"
+            transform="rotate(-90 ${CX} ${CY})"/>
+    </svg>`;
+
+    const body = document.createElement('div');
+    body.className = 'hrow-body';
+
+    const name = document.createElement('div');
+    name.className = 'hrow-name';
+    name.textContent = h.name;
+
+    const meta = document.createElement('div');
+    meta.className = 'hrow-meta';
+    const unit = h.sub_goal_unit || 'items';
+    meta.innerHTML = `<span>💧 ${h._total ?? '—'} days</span><span>${doneCount}/${total} ${unit}</span>`;
+
+    const pills = document.createElement('div');
+    pills.className = 'subgoal-pills';
+    for (const sg of h.sub_goals) {
+        const pill = document.createElement('div');
+        pill.className = 'sg-pill' + (doneDoneIds.has(sg.id) ? ' done' : '');
+        pill.textContent = sg.name;
+        pill.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const prevClass = pill.className;
+            pill.classList.toggle('done');
+            try {
+                await api.post(`/api/v1/habits/${h.id}/completions`, {
+                    date: activeIso, date_fmt: '%Y-%m-%d', sub_goal_id: sg.id,
+                });
+                await refreshHabits();
+            } catch (err) {
+                pill.className = prevClass;
+                toast(err.message, 'error');
+            }
         });
-        g.appendChild(b);
+        pills.appendChild(pill);
+    }
+
+    body.append(name, meta, pills);
+    row.append(icon, body);
+    row.addEventListener('click', (e) => {
+        if (e.target.closest('.sg-pill')) return;
+        selectHabit(h.id);
     });
+    return row;
 }
 
-// ── Habit modal (add / edit) ─────────────────────────────────────
-function openHabitModal(habit) {
-    editingHabitId = habit?.id || null;
-    document.getElementById('habitModalTitle').textContent = habit ? 'Edit habit' : 'New habit';
-    document.getElementById('habitNameIn').value = habit?.name || '';
-    document.getElementById('habitTagsIn').value = (habit?.tags || []).join(', ');
-    document.getElementById('habitIconIn').value = habit?.icon || '📌';
+// ── Detail panel ──────────────────────────────────────────────
+async function selectHabit(id) {
+    selectedHabitId = id;
+    renderHabitList(); // re-render to show selection
 
-    // Frequency: weekly if period is set with type W, else daily.
-    const periodSel = document.getElementById('habitPeriodIn');
-    const targetIn = document.getElementById('habitTargetIn');
-    if (habit?.period && habit.period.period_type === 'W') {
-        periodSel.value = 'W';
-        targetIn.value = habit.period.target_count || 1;
-    } else {
-        periodSel.value = 'D';
-        targetIn.value = habit?.target_count || 1;
-    }
-    updateFrequencyHint();
+    document.getElementById('detailEmpty').style.display = 'none';
+    const content = document.getElementById('detailContent');
+    content.style.display = 'flex';
 
-    // Date started
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('habitStartedIn').value = habit?.date_started || today;
+    // Mobile: slide detail panel in
+    document.getElementById('detailPanel')?.classList.add('open');
 
-    document.getElementById('habitDeleteBtn').style.visibility = habit ? 'visible' : 'hidden';
-    renderIconGrid(habit?.icon || '📌');
-    document.getElementById('habitOv').classList.add('on');
-    setTimeout(() => document.getElementById('habitNameIn').focus(), 50);
+    const h = allHabits.find(x => x.id === id);
+    if (!h) return;
+
+    document.getElementById('detailIcon').textContent = h.icon || '📌';
+    document.getElementById('detailTitle').textContent = h.name;
+
+    // Load stats
+    try {
+        const stats = await api.get(`/api/v1/habits/${id}/stats`);
+        document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
+        document.getElementById('statTotalCheckins').textContent    = stats.total;
+        document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_checkin_rate}%`;
+        document.getElementById('statStreak').textContent           = stats.streak;
+        document.getElementById('statMonthlyCompletion').textContent = stats.monthly_completion;
+        document.getElementById('statTotalCompletion').textContent  = stats.total_completion;
+    } catch { /* leave stale */ }
+
+    // Mount calendar
+    mountCalendar(h.id, h.sub_goals || [], h.target_count, h.records || []);
+
+    // Render line chart
+    renderDailyChart(h.target_count, h.records || []);
 }
 
-function updateFrequencyHint() {
-    const period = document.getElementById('habitPeriodIn').value;
-    const hint = document.getElementById('habitFreqHint');
-    if (!hint) return;
-    if (period === 'W') {
-        hint.textContent = "Each tapped day counts once toward this week's target.";
-    } else {
-        hint.textContent = 'Each click adds one. The day shows as fully done when count reaches the target.';
-    }
-}
-
-window.closeHabitModal = () => {
-    document.getElementById('habitOv').classList.remove('on');
-    editingHabitId = null;
+window.closeDetail = function() {
+    document.getElementById('detailPanel')?.classList.remove('open');
 };
 
-async function saveHabitFromModal() {
-    const name = document.getElementById('habitNameIn').value.trim();
-    const tags = document.getElementById('habitTagsIn').value.split(',').map(s => s.trim()).filter(Boolean);
-    const icon = document.getElementById('habitIconIn').value.trim() || '📌';
-    const periodType = document.getElementById('habitPeriodIn').value; // 'D' or 'W'
-    const rawTarget = Math.max(1, parseInt(document.getElementById('habitTargetIn').value || '1', 10));
-    const date_started = document.getElementById('habitStartedIn').value || null;
-    if (!name) { toast('Name is required', 'error'); return; }
-
-    let target_count;
-    let period;
-    if (periodType === 'W') {
-        target_count = 1;
-        period = { period_type: 'W', period_count: 1, target_count: rawTarget };
-    } else {
-        target_count = rawTarget;
-        period = { period_type: 'D', period_count: 1, target_count: 1 };
-    }
-
-    const payload = { name, tags, icon, target_count, period, date_started };
-
-    try {
-        if (editingHabitId) {
-            await api.put(`/api/v1/habits/${editingHabitId}`, payload);
-            toast('Saved');
-        } else {
-            await api.post('/api/v1/habits', payload);
-            toast('Created');
-        }
-        closeHabitModal();
-        await refreshHabits();
-    } catch (e) { toast(e.message, 'error'); }
-}
-
-async function deleteHabitFromModal() {
-    if (!editingHabitId) return;
-    if (!confirm('Delete this habit?')) return;
-    try {
-        await api.delete(`/api/v1/habits/${editingHabitId}`);
-        toast('Deleted');
-        closeHabitModal();
-        await refreshHabits();
-    } catch (e) { toast(e.message, 'error'); }
-}
-
-function applyFilters(habits) {
-    let out = habits;
-    if (activeTag) out = out.filter(h => (h.tags || []).includes(activeTag));
-    if (searchTerm) out = out.filter(h => h.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (sortMode === 'az') out = [...out].sort((a, b) => a.name.localeCompare(b.name));
-    return out;
-}
-
-function renderTagSidebar() {
-    const tagSet = new Set();
-    allHabits.forEach(h => (h.tags || []).forEach(t => tagSet.add(t)));
-    const ul = document.getElementById('tagList');
-    if (!ul) return;
-    if (tagSet.size === 0) {
-        ul.innerHTML = '<li style="padding:8px 20px;font-size:11px;color:var(--text-muted)">No tags yet</li>';
-        return;
-    }
-    ul.innerHTML = [...tagSet].map(t =>
-        `<li class="fi-item${activeTag === t ? ' on' : ''}" data-tag="${t}"><div class="fn">#${t}</div></li>`
-    ).join('');
-    ul.querySelectorAll('.fi-item').forEach(el => {
-        el.onclick = () => {
-            activeTag = activeTag === el.dataset.tag ? null : el.dataset.tag;
-            renderTagSidebar();
-            renderGrid();
-        };
+// ── Detail "···" menu ─────────────────────────────────────────
+function wireDetailMore() {
+    const btn = document.getElementById('detailMore');
+    if (!btn) return;
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const h = allHabits.find(x => x.id === selectedHabitId);
+        if (h) openHabitModal(h);
     });
 }
 
-let sortableInstance = null;
-
-function renderGrid() {
-    const grid = document.getElementById('hgrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    const filtered = applyFilters(allHabits);
-    if (filtered.length === 0) {
-        grid.innerHTML = '<div class="empty"><div class="empty-hex">⬡</div><p>No habits yet.</p><p class="hint">Click + Add to create one.</p></div>';
-        return;
-    }
-    filtered.forEach(h => grid.appendChild(renderRow(h)));
-
-    if (sortableInstance) sortableInstance.destroy();
-    if (sortMode === 'manual' && window.Sortable) {
-        sortableInstance = new window.Sortable(grid, {
-            animation: 150,
-            handle: '.hicon',
-            onEnd: async () => {
-                const order = [...grid.querySelectorAll('.hrow[data-habit-id]')].map(el => el.dataset.habitId);
-                try { await api.put('/api/v1/habits/meta', { order }); } catch (e) { toast(e.message, 'error'); }
-            },
-        });
-    }
-}
-
+// ── Add / refresh ─────────────────────────────────────────────
 export async function refreshHabits() {
-    try {
-        allHabits = await api.get('/api/v1/habits');
-    } catch (e) {
-        toast(e.message, 'error');
-        return;
-    }
-    renderTagSidebar();
-    renderGrid();
+    const raw = await api.get('/api/v1/habits');
+    // Enrich with streak/total from stats (batch async)
+    allHabits = await Promise.all(raw.map(async h => {
+        try {
+            const s = await api.get(`/api/v1/habits/${h.id}/stats`);
+            h._streak = s.streak;
+            h._total = s.total;
+        } catch { h._streak = 0; h._total = 0; }
+        return h;
+    }));
+    renderWeekStrip();
+    renderHabitList();
+    updateActiveDayChip();
 }
 
-export async function renderHabitDetail() {
-    const root = document.getElementById('detailRoot');
-    if (!root) return;
-    const habitId = root.dataset.habitId;
-
-    try {
-        const habit = await api.get(`/api/v1/habits/${habitId}`);
-        let subtitle = '';
-        if (habit.period && habit.period.period_type === 'W' && habit.period.target_count > 1) {
-            subtitle = ` · ${habit.period.target_count}×/week`;
-        } else if (habit.target_count > 1) {
-            subtitle = ` · ${habit.target_count}×/day`;
-        }
-        document.getElementById('dName').textContent = habit.name + subtitle;
-        const meta = (habit.tags?.length ? habit.tags.map(t => '#' + t).join(' ') : 'No tags');
-        document.getElementById('dMeta').textContent = meta;
-        document.getElementById('dIcon').textContent = habit.icon || '📌';
-        document.title = `${habit.name} · HabitLab`;
-    } catch (e) { toast(e.message, 'error'); return; }
-
-    try {
-        const stats = await api.get(`/api/v1/habits/${habitId}/stats`);
-        document.getElementById('dStreak').textContent = stats.streak;
-        const d7El = document.getElementById('d7');
-        if (d7El) d7El.textContent = `${stats.percent_7d}%`;
-        document.getElementById('d30').textContent = `${stats.percent_30d}%`;
-        document.getElementById('dTotal').textContent = stats.total;
-    } catch { /* leave placeholders */ }
-}
-
+// ── Initialise ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    if (!document.getElementById('hgrid')) return;
+    if (!document.getElementById('habitList')) return;
+
     refreshHabits();
+    wireDetailMore();
 
     document.getElementById('addBtn')?.addEventListener('click', () => openHabitModal(null));
-    document.getElementById('habitSaveBtn')?.addEventListener('click', saveHabitFromModal);
-    document.getElementById('habitDeleteBtn')?.addEventListener('click', deleteHabitFromModal);
-    document.getElementById('habitPeriodIn')?.addEventListener('change', updateFrequencyHint);
-    document.getElementById('searchIn')?.addEventListener('input', (e) => { searchTerm = e.target.value; renderGrid(); });
-    document.getElementById('sortSel')?.addEventListener('change', (e) => { sortMode = e.target.value; renderGrid(); });
-    document.querySelectorAll('.tbtn').forEach(btn => btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.tbtn').forEach(b => b.classList.remove('on'));
-        e.currentTarget.classList.add('on');
-        activeFilter = e.currentTarget.dataset.filter;
-        renderGrid();
-    }));
+    document.getElementById('activeDayClear')?.addEventListener('click', () => {
+        activeDay = null;
+        renderWeekStrip();
+        renderHabitList();
+        updateActiveDayChip();
+    });
+
+    // Close popup on ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.getElementById('sgPopup').style.display = 'none';
+            window.closeSgSheet?.();
+        }
+    });
 });
