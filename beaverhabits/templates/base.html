@@ -7,45 +7,41 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>{% block title %}HabitLab{% endblock %}</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="manifest" href="/static/manifest.json">
-<meta name="theme-color" content="#7c3aed">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#0d0d11">
 <link rel="stylesheet" href="/static/css/styles.css?v={{ asset_version }}">
 <script>
-    (function () {
-        var saved = localStorage.getItem('theme') || 'midnight';
-        document.documentElement.setAttribute('data-theme', saved);
+    (function(){
+        var t=localStorage.getItem('theme')||'midnight';
+        document.documentElement.setAttribute('data-theme',t);
     })();
 </script>
 </head>
 <body data-theme="midnight">
 
-<div class="shade" id="shade" onclick="closeSidebar()"></div>
+<div class="app">
+    <!-- Nav rail -->
+    <nav class="nav-rail" id="navRail">
+        <div class="nav-avatar" id="navAvatar">H</div>
+        <a href="/" class="nav-item {% block nav_habits %}{% endblock %}" title="Habits">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </a>
+        <a href="/stats" class="nav-item {% block nav_stats %}{% endblock %}" title="Stats">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </a>
+        <button class="nav-item" id="searchBtn" title="Search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <div class="nav-spacer"></div>
+        <button class="nav-item" id="settingsBtn" title="Settings" onclick="openSettings()">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
+    </nav>
 
-<div class="app active">
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-content">
-            {% block sidebar %}{% endblock %}
-        </div>
-        <div class="sidebar-footer">
-            <button class="ibtn" id="themeToggle" title="Toggle theme">☾</button>
-            <button class="ibtn" onclick="openSettings()" title="Settings">⚙</button>
-            <button class="ibtn dng" onclick="logout()" title="Lock">🔒</button>
-        </div>
-    </aside>
-
-    <div class="main">
-        <div class="toolbar">
-            <button class="mmenu" onclick="openSidebar()">☰</button>
-            <a href="/" class="t-brand"><img src="/static/logo-mark.svg" alt="" width="22" height="22"> <span class="t-brand-text">HabitLab</span></a>
-            <div class="t-mid">{% block toolbar %}{% endblock %}</div>
-        </div>
-        {% block content %}{% endblock %}
+    <!-- Main panels area -->
+    <div class="panels">
+        {% block panels %}{% endblock %}
     </div>
 </div>
 
