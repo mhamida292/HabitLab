@@ -15,18 +15,30 @@ let saveTimer = null;
 
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init() {
-    // Check for URL params
     const params = new URLSearchParams(location.search);
 
-    // Fetch habits and notes in parallel
     const [habitsData, notesData] = await Promise.all([
         api.get('/api/v1/habits'),
         api.get('/api/v1/notes'),
-    ]);
+    ]).catch(() => {
+        const main = document.getElementById('notesMain');
+        if (main) main.innerHTML = '<div style="padding:20px;color:var(--text-muted);text-align:center">Failed to load notes. Please refresh.</div>';
+        return [[], []];
+    });
     state.habits = habitsData;
     state.notes = notesData;
 
-    setView(state.view, false);
+    // Process URL params before first render
+    const noteId = params.get('id');
+    if (noteId) {
+        state.selectedId = noteId;
+        setView('list', false);
+        history.replaceState({}, '', '/notes');
+    } else {
+        setView(state.view, false);
+    }
+
+    // Single render
     renderFilters();
     renderMain();
 
@@ -35,21 +47,13 @@ async function init() {
     document.getElementById('viewListBtn').addEventListener('click', () => setView('list'));
     document.getElementById('viewGridBtn').addEventListener('click', () => setView('grid'));
 
-    // Auto-open note if ?id= param
-    const noteId = params.get('id');
-    if (noteId) {
-        state.selectedId = noteId;
-        setView('list', false);
-        renderFilters();
-        renderMain();
-        history.replaceState({}, '', '/notes');
-    }
-
     // Auto-create if ?new=1
     if (params.get('new') === '1') {
         const habitId = params.get('habit_id') || null;
-        await createNote(habitId);
-        history.replaceState({}, '', '/notes');
+        if (!noteId) { // don't create if we're opening an existing note
+            await createNote(habitId);
+            history.replaceState({}, '', '/notes');
+        }
     }
 }
 
@@ -153,6 +157,13 @@ function makeListItem(note) {
 function selectNote(id) {
     state.selectedId = id;
     renderMain();
+    // On mobile: show editor, hide list
+    if (window.innerWidth <= 767) {
+        const listCol = document.getElementById('notesListCol');
+        const editorCol = document.getElementById('notesEditorCol');
+        if (listCol) listCol.classList.add('mobile-hide');
+        if (editorCol) editorCol.classList.add('mobile-show');
+    }
 }
 
 // ── Editor ─────────────────────────────────────────────────────────────────
@@ -201,8 +212,18 @@ function renderEditor(container, note) {
     body.addEventListener('input', () => scheduleSave(note.id, { body: body.value }));
     container.appendChild(body);
 
-    // Focus title after render
-    requestAnimationFrame(() => titleInput.focus());
+    // Back button for mobile
+    if (window.innerWidth <= 767) {
+        const backBtn = document.createElement('button');
+        backBtn.className = 'ibtn';
+        backBtn.style.cssText = 'margin:8px 16px;font-size:12px;';
+        backBtn.textContent = '← Back';
+        backBtn.addEventListener('click', () => {
+            state.selectedId = null;
+            renderMain();
+        });
+        container.insertBefore(backBtn, container.firstChild);
+    }
 }
 
 // ── Grid view ──────────────────────────────────────────────────────────────
@@ -242,7 +263,6 @@ function makeCard(note) {
 function openCardEditor(id) {
     setView('list', false);
     state.selectedId = id;
-    renderFilters();
     renderMain();
 }
 
@@ -259,20 +279,26 @@ async function createNote(habitId = null) {
         if (state.view === 'grid') setView('list', false);
         renderFilters();
         renderMain();
-        // Focus title input
-        setTimeout(() => document.querySelector('.note-editor-title')?.focus(), 50);
+        // Focus title for new note
+        requestAnimationFrame(() => document.querySelector('.note-editor-title')?.focus());
     } catch (e) {
         toast('Failed to create note', 'error');
     }
 }
 
 function scheduleSave(noteId, patch) {
-    // Update local state immediately
     const note = state.notes.find(n => n.id === noteId);
     if (note) Object.assign(note, patch);
-    // Debounce API call
+    if (note && 'habit_id' in note) note.habit_id = note.habit_id || null;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => persistNote(noteId, patch), 600);
+    saveTimer = setTimeout(() => {
+        if (!note) return;
+        persistNote(noteId, {
+            title: note.title,
+            body: note.body,
+            habit_id: note.habit_id,
+        });
+    }, 600);
 }
 
 async function persistNote(noteId, patch) {
