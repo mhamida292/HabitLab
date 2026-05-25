@@ -1,40 +1,100 @@
 {% extends "base.html" %}
 {% block title %}Habits · HabitLab{% endblock %}
+{% block nav_habits %}active{% endblock %}
 
-{% block sidebar %}
-<div class="s-label">View</div>
-<div class="type-filters">
-    <button class="tbtn on" data-filter="all">All</button>
-    <button class="tbtn" data-filter="active">Active</button>
-    <button class="tbtn" data-filter="archived">Archived</button>
+{% block panels %}
+<!-- ── List panel ── -->
+<div class="list-panel" id="listPanel">
+
+    <!-- Top bar -->
+    <div class="list-topbar">
+        <span class="list-topbar-title">
+            Habit
+            <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg>
+        </span>
+        <button class="ibtn" id="layoutToggle" title="Layout">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+        <button class="ibtn" id="addBtn" title="Add habit" style="background:var(--accent);color:#fff;border:none;width:auto;padding:0 10px;font-size:13px;gap:4px;border-radius:6px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="ibtn" id="moreBtn" title="More">···</button>
+    </div>
+
+    <!-- Week strip -->
+    <div class="week-strip" id="weekStrip">
+        <div class="week-days" id="weekDays"></div>
+        <div class="active-day-chip" id="activeDayChip" style="display:none">
+            <span id="activeDayLabel"></span>
+            <button id="activeDayClear" title="Back to today">✕</button>
+        </div>
+    </div>
+
+    <!-- Habit list -->
+    <div class="habit-list" id="habitList"></div>
 </div>
-<div class="s-label">Tags</div>
-<ul class="flist" id="tagList"></ul>
-{% endblock %}
 
-{% block toolbar %}
-<div class="sbox">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input class="sinput" id="searchIn" placeholder="Search habits...">
+<!-- ── Detail panel ── -->
+<div class="detail-panel" id="detailPanel">
+    <!-- Back button (mobile only) -->
+    <div class="detail-back" id="detailBack" onclick="closeDetail()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+        Back
+    </div>
+
+    <!-- Empty state -->
+    <div class="detail-empty" id="detailEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <p>Select a habit to see details</p>
+    </div>
+
+    <!-- Populated detail (hidden until habit selected) -->
+    <div id="detailContent" style="display:none; flex-direction:column; flex:1;">
+        <!-- Header -->
+        <div class="detail-header">
+            <div class="detail-icon" id="detailIcon">📌</div>
+            <div class="detail-title" id="detailTitle">—</div>
+            <button class="ibtn detail-more" id="detailMore" title="Edit / Archive / Delete">···</button>
+        </div>
+
+        <!-- 6 stat cards -->
+        <div class="stat-grid" id="statGrid">
+            <div class="stat-card"><div class="stat-val" id="statMonthlyCheckins">—</div><div class="stat-lbl">Monthly check-ins</div></div>
+            <div class="stat-card"><div class="stat-val" id="statTotalCheckins">—</div><div class="stat-lbl">Total check-ins</div></div>
+            <div class="stat-card"><div class="stat-val" id="statMonthlyRate">—</div><div class="stat-lbl">Monthly check-in rate</div></div>
+            <div class="stat-card"><div class="stat-val streak" id="statStreak">—</div><div class="stat-lbl">Current streak</div></div>
+            <div class="stat-card"><div class="stat-val" id="statMonthlyCompletion">—</div><div class="stat-lbl">Monthly completion</div></div>
+            <div class="stat-card"><div class="stat-val" id="statTotalCompletion">—</div><div class="stat-lbl">Total completion</div></div>
+        </div>
+
+        <!-- Monthly calendar -->
+        <div class="cal-section">
+            <div class="cal-section-title">Monthly view</div>
+            <div id="calContainer"></div>
+        </div>
+
+        <!-- Daily goals chart -->
+        <div class="chart-section">
+            <div class="cal-section-title">Daily goals</div>
+            <div class="chart-wrap" id="chartWrap"></div>
+        </div>
+    </div>
 </div>
-<select class="sort-sel" id="sortSel">
-    <option value="manual">Manual</option>
-    <option value="updated">Recently active</option>
-    <option value="az">A → Z</option>
-</select>
-<button class="btn-new" id="addBtn">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-    <span class="newlbl">Add</span>
-</button>
-{% endblock %}
 
-{% block content %}
-<div class="hgrid" id="hgrid"></div>
+<!-- Sub-goal popup (anchored) -->
+<div id="sgPopup" class="sg-popup" style="display:none"></div>
+<!-- Sub-goal bottom sheet (mobile) -->
+<div id="sgSheet" class="sg-sheet">
+    <div class="sg-sheet-handle"></div>
+    <div class="sg-sheet-title" id="sgSheetTitle"></div>
+    <div id="sgSheetItems"></div>
+</div>
+<div id="sgSheetShade" style="display:none;position:fixed;inset:0;z-index:199" onclick="closeSgSheet()"></div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/vendor/sortable.min.js"></script>
-<script type="module" src="/static/js/heatmap.js"></script>
-<script type="module" src="/static/js/notes.js"></script>
-<script type="module" src="/static/js/habits.js"></script>
+<script type="module" src="/static/js/monthly.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/habits.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/notes.js?v={{ asset_version }}"></script>
 {% endblock %}
