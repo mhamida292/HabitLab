@@ -7,16 +7,9 @@
     <div class="list-topbar">
         <span class="list-topbar-title">Stats</span>
     </div>
-    <div style="padding:20px;overflow-y:auto;flex:1" id="statsRoot">Loading…</div>
+    <div style="padding:40px 24px;text-align:center;color:var(--text-muted);font-size:14px">
+        <div style="font-size:32px;margin-bottom:12px">📊</div>
+        <div>Stats coming soon</div>
+    </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script type="module">
-    import { api } from '/static/js/api.js';
-    api.get('/api/v1/habits').then(habits => {
-        document.getElementById('statsRoot').innerHTML =
-            `<p style="color:var(--text-secondary)">${habits.length} habit${habits.length !== 1 ? 's' : ''} tracked.</p>`;
-    });
-</script>
 {% endblock %}

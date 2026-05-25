@@ -179,10 +179,21 @@ function buildRegularRow(h, activeIso) {
         const prevClass = toggle.className;
         toggle.className = 'hrow-toggle' + (newCount >= h.target_count ? ' done' : '');
         try {
-            await api.post(`/api/v1/habits/${h.id}/completions`, {
+            const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
                 count: newCount, date: activeIso, date_fmt: '%Y-%m-%d',
             });
-            await refreshHabits();
+            // Update local state directly, avoid full N+1 refresh
+            const habit = allHabits.find(x => x.id === h.id);
+            if (habit) {
+                let rec = habit.records?.find(r => r.day === activeIso);
+                if (!rec) {
+                    rec = { day: activeIso, count: 0, done: false, sub_goals_done: [] };
+                    (habit.records = habit.records || []).push(rec);
+                }
+                rec.count = result.count;
+                rec.done = result.done;
+            }
+            renderHabitList();
         } catch (err) {
             toggle.className = prevClass;
             toast(err.message, 'error');
@@ -245,10 +256,22 @@ function buildSubgoalRow(h, activeIso) {
             const prevClass = pill.className;
             pill.classList.toggle('done');
             try {
-                await api.post(`/api/v1/habits/${h.id}/completions`, {
+                const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
                     date: activeIso, date_fmt: '%Y-%m-%d', sub_goal_id: sg.id,
                 });
-                await refreshHabits();
+                // Optimistic: update local record state directly, re-render list only
+                const habit = allHabits.find(x => x.id === h.id);
+                if (habit) {
+                    let rec = habit.records?.find(r => r.day === activeIso);
+                    if (!rec) {
+                        rec = { day: activeIso, count: 0, done: false, sub_goals_done: [] };
+                        (habit.records = habit.records || []).push(rec);
+                    }
+                    rec.sub_goals_done = result.sub_goals_done;
+                    rec.count = result.count;
+                    rec.done = result.done;
+                }
+                renderHabitList();
             } catch (err) {
                 pill.className = prevClass;
                 toast(err.message, 'error');
@@ -272,8 +295,7 @@ async function selectHabit(id) {
     renderHabitList(); // re-render to show selection
 
     document.getElementById('detailEmpty').style.display = 'none';
-    const content = document.getElementById('detailContent');
-    content.style.display = 'flex';
+    document.getElementById('detailContent').style.display = 'block';
 
     // Mobile: slide detail panel in
     document.getElementById('detailPanel')?.classList.add('open');

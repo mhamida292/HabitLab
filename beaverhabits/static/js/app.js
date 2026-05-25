@@ -29,15 +29,13 @@ window.closeSidebar = () => {
     document.getElementById('shade')?.classList.remove('open');
 };
 
-// ── Settings drawer ─────────────────────────────────────────────
+// ── Settings modal ──────────────────────────────────────────────
 window.openSettings = async () => {
-    const drawer = document.getElementById('settingsDrawer');
-    if (!drawer) return;
-    drawer.classList.add('open');
+    document.getElementById('settingsOv')?.classList.add('on');
     await loadSettings();
 };
 window.closeSettings = () => {
-    document.getElementById('settingsDrawer')?.classList.remove('open');
+    document.getElementById('settingsOv')?.classList.remove('on');
 };
 
 async function loadSettings() {
@@ -253,18 +251,26 @@ window.saveHabit = async function() {
         sub_goal_unit = document.getElementById('habitUnitIn').value.trim() || 'items';
     }
 
-    const body = {
-        name, icon,
-        tags: tag ? [tag] : [],
-        sub_goals,
-        ...(sub_goal_unit && { sub_goal_unit }),
-    };
-
     try {
         if (_editingHabit) {
-            await api.put(`/api/v1/habits/${_editingHabit.id}`, body);
+            // PUT accepts all fields including sub_goals
+            await api.put(`/api/v1/habits/${_editingHabit.id}`, {
+                name, icon,
+                tags: tag ? [tag] : [],
+                sub_goals,
+                ...(sub_goal_unit && { sub_goal_unit }),
+            });
         } else {
-            await api.post('/api/v1/habits', body);
+            // POST only accepts name/icon/tags — sub_goals must be set via a follow-up PUT
+            const created = await api.post('/api/v1/habits', {
+                name, icon, tags: tag ? [tag] : [],
+            });
+            if (sub_goals.length > 0 && created.id) {
+                await api.put(`/api/v1/habits/${created.id}`, {
+                    sub_goals,
+                    ...(sub_goal_unit && { sub_goal_unit }),
+                });
+            }
         }
         toast(_editingHabit ? 'Saved' : 'Created');
         window.closeHabitModal();
