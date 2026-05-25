@@ -29,12 +29,16 @@ window.closeSidebar = () => {
     document.getElementById('shade')?.classList.remove('open');
 };
 
-// ── Settings modal ──────────────────────────────────────────────
+// ── Settings drawer ─────────────────────────────────────────────
 window.openSettings = async () => {
-    document.getElementById('settingsOv')?.classList.add('on');
+    const drawer = document.getElementById('settingsDrawer');
+    if (!drawer) return;
+    drawer.classList.add('open');
     await loadSettings();
 };
-window.closeSettings = () => document.getElementById('settingsOv')?.classList.remove('on');
+window.closeSettings = () => {
+    document.getElementById('settingsDrawer')?.classList.remove('open');
+};
 
 async function loadSettings() {
     const themeSel = document.getElementById('setThemeSel');
@@ -156,4 +160,132 @@ window.logout = async () => {
     try { await api.post('/auth/logout'); } catch { /* ignore */ }
     localStorage.removeItem('jwt');
     window.location.href = '/login';
+};
+
+// ── Habit modal (add / edit) ──────────────────────────────────
+let _editingHabit = null;
+
+export function openHabitModal(habit) {
+    _editingHabit = habit;
+    const ov = document.getElementById('habitOv');
+    if (!ov) return;
+    document.getElementById('habitModalTitle').textContent = habit ? 'Edit Habit' : 'New Habit';
+    document.getElementById('habitNameIn').value = habit?.name || '';
+    document.getElementById('habitIconBtn').textContent = habit?.icon || '📌';
+    document.getElementById('habitTagIn').value = habit?.tags?.[0] || '';
+    document.getElementById('habitDeleteBtn').style.visibility = habit ? 'visible' : 'hidden';
+
+    // Sub-goals
+    const hasSubgoals = (habit?.sub_goals?.length || 0) > 0;
+    document.getElementById('habitSubgoalToggle').checked = hasSubgoals;
+    document.getElementById('subgoalSection').style.display = hasSubgoals ? 'flex' : 'none';
+    document.getElementById('habitUnitIn').value = habit?.sub_goal_unit || '';
+    renderSgModalList(habit?.sub_goals || []);
+
+    ov.classList.add('on');
+    document.getElementById('habitNameIn').focus();
+}
+window.openHabitModal = openHabitModal;
+
+window.closeHabitModal = () => {
+    document.getElementById('habitOv')?.classList.remove('on');
+    _editingHabit = null;
+};
+
+window.toggleSubgoalSection = () => {
+    const on = document.getElementById('habitSubgoalToggle').checked;
+    document.getElementById('subgoalSection').style.display = on ? 'flex' : 'none';
+    if (on && document.getElementById('sgModalList').children.length === 0) {
+        addSubgoalRow();
+    }
+    updateSgPreview();
+};
+
+function renderSgModalList(subGoals) {
+    const list = document.getElementById('sgModalList');
+    list.innerHTML = '';
+    subGoals.forEach(sg => appendSgRow(sg.name));
+    if (window.Sortable) {
+        new Sortable(list, { animation: 150, handle: '.sg-drag-handle' });
+    }
+    updateSgPreview();
+}
+
+window.addSubgoalRow = function(name = '') {
+    appendSgRow(name);
+    updateSgPreview();
+};
+
+function appendSgRow(name) {
+    const list = document.getElementById('sgModalList');
+    const item = document.createElement('div');
+    item.className = 'sg-list-item';
+    item.innerHTML = `
+        <span class="sg-drag-handle">⠿</span>
+        <input type="text" placeholder="Sub-goal name" value="${name.replace(/"/g, '&quot;')}">
+        <button type="button" onclick="this.closest('.sg-list-item').remove();updateSgPreview()">✕</button>`;
+    item.querySelector('input').addEventListener('input', updateSgPreview);
+    list.appendChild(item);
+}
+
+window.updateSgPreview = function() {
+    const names = [...document.querySelectorAll('#sgModalList input')].map(i => i.value.trim()).filter(Boolean);
+    const unit = document.getElementById('habitUnitIn')?.value || 'items';
+    document.getElementById('sgPreview').textContent = `Preview: 0 / ${names.length} ${unit}`;
+};
+
+document.getElementById('habitUnitIn')?.addEventListener('input', window.updateSgPreview);
+
+window.saveHabit = async function() {
+    const name = document.getElementById('habitNameIn').value.trim();
+    if (!name) { toast('Name is required', 'error'); return; }
+
+    const icon = document.getElementById('habitIconBtn').textContent;
+    const tag = document.getElementById('habitTagIn').value.trim();
+    const hasSubgoals = document.getElementById('habitSubgoalToggle').checked;
+
+    let sub_goals = [];
+    let sub_goal_unit = null;
+    if (hasSubgoals) {
+        const names = [...document.querySelectorAll('#sgModalList input')].map(i => i.value.trim()).filter(Boolean);
+        if (names.length === 0) { toast('Add at least one sub-goal', 'error'); return; }
+        sub_goals = names.map(n => ({ id: n.toLowerCase().replace(/\s+/g, '_'), name: n }));
+        sub_goal_unit = document.getElementById('habitUnitIn').value.trim() || 'items';
+    }
+
+    const body = {
+        name, icon,
+        tags: tag ? [tag] : [],
+        sub_goals,
+        ...(sub_goal_unit && { sub_goal_unit }),
+    };
+
+    try {
+        if (_editingHabit) {
+            await api.put(`/api/v1/habits/${_editingHabit.id}`, body);
+        } else {
+            await api.post('/api/v1/habits', body);
+        }
+        toast(_editingHabit ? 'Saved' : 'Created');
+        window.closeHabitModal();
+        const { refreshHabits } = await import('/static/js/habits.js');
+        await refreshHabits();
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+window.deleteCurrentHabit = async function() {
+    if (!_editingHabit) return;
+    if (!confirm(`Delete "${_editingHabit.name}"? This cannot be undone.`)) return;
+    try {
+        await api.delete(`/api/v1/habits/${_editingHabit.id}`);
+        window.closeHabitModal();
+        const { refreshHabits } = await import('/static/js/habits.js');
+        await refreshHabits();
+        toast('Deleted');
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+// Icon picker (simple — emoji typed directly into the button)
+window.openIconPicker = function() {
+    document.getElementById('habitIconBtn').focus();
 };
