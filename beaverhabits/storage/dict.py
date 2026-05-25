@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from dataclasses import dataclass, field
 
 from beaverhabits.logger import logger
@@ -412,7 +413,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     def add_note(self, title: str, body: str = "", habit_id: str | None = None) -> dict:
         note = {
-            "id": generate_short_hash(title or "Untitled"),
+            "id": uuid.uuid4().hex[:8],
             "title": title.strip() or "Untitled",
             "body": body,
             "habit_id": habit_id,
