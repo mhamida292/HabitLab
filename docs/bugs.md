@@ -4,7 +4,7 @@
 
 ## BUG-001 — Monthly calendar toggles don't update stat cards in place
 
-**Status:** Open  
+**Status:** Fixed — 2026-05-25  
 **Reported:** 2026-05-25  
 **Severity:** Medium — data saves correctly, UI is just stale until re-select  
 
@@ -32,20 +32,23 @@ Kept the `onToggle` callback but also added `document.dispatchEvent(new CustomEv
 
 **Result:** Still not working per user report. Root cause unknown — not yet debugged with browser console open.
 
-### Next investigation steps
+### Root cause (confirmed by code analysis)
 
-1. **Open browser DevTools console** while clicking a calendar date and check for:
-   - Any JS errors thrown
-   - Whether `cal:toggled` event is actually firing (`document.addEventListener('cal:toggled', e => console.log(e.detail))`)
-   - Whether `refreshDetailStats` is being called and what the API returns
-2. **Check if `monthly.js` is actually being re-fetched** — in DevTools Network tab, filter for `monthly.js` and check response headers for `Cache-Control`. The file may need a version query string added to the static import in `habits.js`.
-3. **Potential fix for cache issue** — change the import in `habits.js` from:
-   ```javascript
-   import { mountCalendar, updateCalendarRecord } from '/static/js/monthly.js';
-   ```
-   to something with cache-busting, or serve JS files with `Cache-Control: no-cache` headers.
-4. **Alternative approach** — skip the `monthly.js` event entirely. After any calendar date click, have `habits.js` detect the change by polling or using a `MutationObserver` on `#calContainer`. Less elegant but bypasses the module caching problem.
-5. **Simplest nuclear option** — after a successful completion POST, call `refreshHabits()` (full re-fetch of all habits). Slower (~200–400ms extra) but guaranteed to keep everything in sync. Could gate it with a debounce so rapid clicks don't spam the server.
+Two compounding issues:
+
+1. **`index.html` loaded `monthly.js?v=TIMESTAMP`** via a standalone `<script type="module">` tag. But `habits.js` imports `'/static/js/monthly.js'` (no version string). The browser module registry is URL-keyed — these are **two separate module instances**. The versioned script tag's fresh load was never used by `habits.js`.
+
+2. **HTTP cache served stale `monthly.js`** for the unversioned import URL. Starlette's `StaticFiles` doesn't set `Cache-Control`, so browsers use heuristic caching (≈10% of file age since `Last-Modified`). After editing `monthly.js` and reloading, the browser silently served the cached pre-edit version — the one without `onToggle` or `cal:toggled` support.
+
+Both attempts (Attempt 1 and 2) wrote correct code into `monthly.js`, but the browser kept running the old file.
+
+### Fix applied
+
+1. **Added `Cache-Control: no-cache` middleware** in `main.py` for all `/static/js/*.js` responses. `no-cache` means the browser always revalidates with the server before using a cached version (returns 304 if unchanged — still fast).
+
+2. **Removed the redundant `<script type="module" src="monthly.js?v=...">` tag** from `index.html`. It was useless (no side-effects, different URL from habits.js's import) and created a phantom second instance.
+
+Both `onToggle` callback and `cal:toggled` event dispatch were already correctly wired — they simply needed the browser to run the current version of `monthly.js`.
 
 ### Files involved
 

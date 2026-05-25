@@ -55,3 +55,14 @@ async def request_timing(request: Request, call_next):
         elapsed_ms,
     )
     return response
+
+
+@app.middleware("http")
+async def js_no_cache(request: Request, call_next):
+    """Force revalidation of JS files so cached stale modules never silently break
+    module imports (e.g. habits.js imports monthly.js without a version string)."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/js/") and path.endswith(".js"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
