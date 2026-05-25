@@ -50,22 +50,54 @@
             <button class="ibtn detail-more" id="detailMore" title="Edit / Archive / Delete">···</button>
         </div>
 
-        <!-- 6 stat cards -->
-        <div class="stat-grid" id="statGrid">
-            <div class="stat-card"><div class="stat-val" id="statMonthlyCheckins">—</div><div class="stat-lbl">Monthly check-ins</div></div>
-            <div class="stat-card"><div class="stat-val" id="statTotalCheckins">—</div><div class="stat-lbl">Total check-ins</div></div>
-            <div class="stat-card"><div class="stat-val" id="statMonthlyRate">—</div><div class="stat-lbl">Monthly check-in rate</div></div>
-            <div class="stat-card"><div class="stat-val streak" id="statStreak">—</div><div class="stat-lbl">Current streak</div></div>
-            <div class="stat-card"><div class="stat-val" id="statMonthlyCompletion">—</div><div class="stat-lbl">Monthly completion</div></div>
-            <div class="stat-card"><div class="stat-val" id="statTotalCompletion">—</div><div class="stat-lbl">Total completion</div></div>
-        </div>
+        <!-- Two-column body -->
+        <div class="detail-columns">
 
-        <!-- Monthly calendar -->
-        <div class="cal-section">
-            <div class="cal-section-title">Monthly view</div>
-            <div id="calContainer"></div>
-        </div>
+            <!-- Left: stats + calendar -->
+            <div class="detail-col-left" id="detailLeft">
+                <!-- 4 stat cards (2×2) -->
+                <div class="stat-grid" id="statGrid">
+                    <div class="stat-card"><div class="stat-val" id="statMonthlyCheckins">—</div><div class="stat-lbl">Monthly check-ins</div></div>
+                    <div class="stat-card"><div class="stat-val" id="statTotalCheckins">—</div><div class="stat-lbl">Total check-ins</div></div>
+                    <div class="stat-card"><div class="stat-val" id="statMonthlyRate">—</div><div class="stat-lbl">Monthly rate</div></div>
+                    <div class="stat-card"><div class="stat-val streak" id="statStreak">—</div><div class="stat-lbl">Current streak</div></div>
+                </div>
 
+                <!-- Inset calendar -->
+                <div class="cal-section">
+                    <div class="cal-section-title">Monthly view</div>
+                    <div class="cal-inset">
+                        <div id="calContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: sub-goals, trend, notes -->
+            <div class="detail-col-right" id="detailRight">
+
+                <!-- Sub-goals (hidden for habits without sub-goals) -->
+                <div id="detailSubGoals" style="display:none">
+                    <div class="detail-section-label">Sub-goals · today</div>
+                    <div id="sgTodayList"></div>
+                    <div class="detail-sg-progress"><div class="detail-sg-progress-fill" id="sgProgressFill"></div></div>
+                </div>
+
+                <!-- Weekly trend -->
+                <div id="detailTrend">
+                    <div class="detail-section-label">Weekly trend</div>
+                    <div class="trend-bars" id="trendBars"></div>
+                    <div class="trend-bar-labels" id="trendLabels"></div>
+                </div>
+
+                <!-- Recent notes -->
+                <div id="detailNotes">
+                    <div class="detail-section-label">Notes</div>
+                    <div id="detailNotesList"></div>
+                    <button class="detail-notes-add" id="detailNotesAdd">+ Add note</button>
+                </div>
+
+            </div>
+        </div>
     </div>
 </div>
 
