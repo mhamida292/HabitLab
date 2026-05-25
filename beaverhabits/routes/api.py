@@ -611,5 +611,74 @@ def format_json_response(habit: Habit) -> dict:
     }
 
 
+# ── Notes ─────────────────────────────────────────────────────────────────────
+
+class CreateNote(BaseModel):
+    title: str
+    body: str = ""
+    habit_id: str | None = None
+
+
+class UpdateNote(BaseModel):
+    title: str | None = None
+    body: str | None = None
+    habit_id: str | None = None
+
+
+@api_router.get("/notes", tags=["notes"])
+async def get_notes(
+    habit_id: str | None = None,
+    habit_list: HabitList = Depends(current_habit_list),
+):
+    notes = sorted(habit_list.notes, key=lambda n: n.get("created_at", ""), reverse=True)
+    if habit_id:
+        notes = [n for n in notes if n.get("habit_id") == habit_id]
+    return notes
+
+
+@api_router.post("/notes", tags=["notes"])
+async def post_note(
+    note: CreateNote,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    created = habit_list.add_note(note.title, note.body, note.habit_id)
+    await _storage.save_user_habit_list(user, habit_list)
+    return created
+
+
+@api_router.put("/notes/{note_id}", tags=["notes"])
+async def put_note(
+    note_id: str,
+    note: UpdateNote,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    existing = habit_list.get_note(note_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Note not found")
+    if note.title is not None:
+        existing["title"] = note.title.strip() or "Untitled"
+    if note.body is not None:
+        existing["body"] = note.body
+    if note.habit_id is not None:
+        existing["habit_id"] = note.habit_id if note.habit_id != "" else None
+    await _storage.save_user_habit_list(user, habit_list)
+    return existing
+
+
+@api_router.delete("/notes/{note_id}", tags=["notes"])
+async def delete_note_route(
+    note_id: str,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    deleted = habit_list.delete_note(note_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Note not found")
+    await _storage.save_user_habit_list(user, habit_list)
+    return {"ok": True}
+
+
 def init_api_routes(app: FastAPI) -> None:
     app.include_router(api_router, prefix="/api/v1")

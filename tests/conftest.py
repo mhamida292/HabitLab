@@ -1,11 +1,14 @@
 import pytest
 import datetime
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from fastapi_users.db import SQLAlchemyUserDatabase
 
 from beaverhabits.main import app
-from beaverhabits.app.db import Base, get_async_session
-from beaverhabits.app.auth import user_create, user_authenticate, user_create_token
+from beaverhabits.app.db import Base, get_async_session, User
+from beaverhabits.app.schemas import UserCreate
+from beaverhabits.app.users import UserManager
+from beaverhabits.app.dependencies import current_active_user
 
 
 @pytest.fixture
@@ -43,19 +46,29 @@ async def authed_client(test_async_session):
 
     app.dependency_overrides[get_async_session] = override_get_async_session
 
-    # Create test user
-    test_user = await user_create(
-        email="test@example.com",
-        password="testpassword",
-        is_superuser=False,
-    )
+    # Create test user directly via the test session (avoids global session context)
+    async with test_async_session() as session:
+        user_db = SQLAlchemyUserDatabase(session, User)
+        user_manager = UserManager(user_db)
+        test_user = await user_manager.create(
+            UserCreate(
+                email="test@example.com",
+                password="testpassword",
+                is_superuser=False,
+            )
+        )
 
-    # Create auth token
-    token = await user_create_token(test_user)
+    # Override current_active_user to return the test user directly,
+    # bypassing JWT validation which would hit the real (non-test) DB.
+    async def override_current_active_user():
+        return test_user
 
-    # Create authenticated client
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        client.headers["Authorization"] = f"Bearer {token}"
+    app.dependency_overrides[current_active_user] = override_current_active_user
+
+    # Create authenticated client (no token needed since auth is overridden)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         yield client
 
     app.dependency_overrides.clear()
