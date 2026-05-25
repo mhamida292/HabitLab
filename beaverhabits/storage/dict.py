@@ -405,3 +405,29 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
             for other_habit in other.habits:
                 if self_habit == other_habit:
                     await self_habit.merge(other_habit)
+
+    @property
+    def notes(self) -> list[dict]:
+        return self.data.setdefault("notes", [])
+
+    def add_note(self, title: str, body: str = "", habit_id: str | None = None) -> dict:
+        import datetime
+        from beaverhabits.utils import generate_short_hash
+        note = {
+            "id": generate_short_hash((title or "Untitled") + str(datetime.datetime.now())),
+            "title": title.strip() or "Untitled",
+            "body": body,
+            "habit_id": habit_id,
+            "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
+        }
+        self.data.setdefault("notes", []).append(note)
+        return note
+
+    def get_note(self, note_id: str) -> dict | None:
+        return next((n for n in self.notes if n["id"] == note_id), None)
+
+    def delete_note(self, note_id: str) -> bool:
+        notes = self.data.setdefault("notes", [])
+        before = len(notes)
+        self.data["notes"] = [n for n in notes if n["id"] != note_id]
+        return len(self.data["notes"]) < before
