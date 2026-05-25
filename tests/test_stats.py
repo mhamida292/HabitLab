@@ -1,4 +1,5 @@
 import datetime
+import pytest
 
 from beaverhabits.routes.api import _scoped_percent
 
@@ -52,3 +53,19 @@ def test_only_hits_inside_effective_window_count():
     done = [d("2026-04-20"), d("2026-04-26")]
     # Effective window: 2026-04-25..2026-04-28 → 4 days, 1 hit → 25.0%
     assert _scoped_percent(done, today, 30, started) == 25.0
+
+
+@pytest.mark.asyncio
+async def test_stats_includes_monthly_metrics(authed_client, habit):
+    resp = await authed_client.get(f"/api/v1/habits/{habit['id']}/stats")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "monthly_checkins" in body
+    assert "monthly_checkin_rate" in body
+    assert "monthly_completion" in body
+    assert "total_completion" in body
+    # All zero for a fresh habit
+    assert body["monthly_checkins"] == 0
+    assert body["monthly_completion"] == 0
+    assert body["total_completion"] == 0
+    assert 0.0 <= body["monthly_checkin_rate"] <= 100.0

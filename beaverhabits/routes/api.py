@@ -405,6 +405,17 @@ async def get_habit_stats(
 
     started = habit.date_started
 
+    # Monthly metrics
+    month_start = today.replace(day=1)
+    days_elapsed = today.day  # days 1..today inclusive
+
+    monthly_records = [r for r in habit.records if r.day >= month_start and r.day <= today]
+    monthly_checkins = sum(1 for r in monthly_records if r.count >= target)
+    monthly_completion = sum(r.count for r in monthly_records)
+    monthly_checkin_rate = round(monthly_checkins / days_elapsed * 100, 1) if days_elapsed > 0 else 0.0
+
+    total_completion = sum(r.count for r in habit.records)
+
     return {
         "streak": streak,
         "total": len(done_dates),
@@ -413,6 +424,10 @@ async def get_habit_stats(
         "percent_90d": _scoped_percent(done_dates, today, 90, started),
         "target_count": target,
         "date_started": started.isoformat(),
+        "monthly_checkins": monthly_checkins,
+        "monthly_checkin_rate": monthly_checkin_rate,
+        "monthly_completion": monthly_completion,
+        "total_completion": total_completion,
     }
 
 
