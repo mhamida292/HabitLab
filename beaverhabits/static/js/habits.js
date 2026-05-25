@@ -423,6 +423,9 @@ async function onSgCheckClick(habitId, sgId, dateIso) {
             rec.count = result.count;
             rec.done = result.done;
             renderSubGoalsSection(habit);
+            const rec2 = (habit.records || []).find(r => r.day === dateIso);
+            updateCalendarRecord(dateIso, rec2);
+            refreshDetailStats(habitId);
         }
     } catch (e) {
         console.error('Failed to toggle sub-goal', e);
