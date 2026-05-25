@@ -162,10 +162,10 @@ export async function renderMultiYearHeatmap() {
         const wrap = document.createElement('div');
         wrap.style.marginBottom = '20px';
         const title = document.createElement('div');
-        title.className = 'ss-title';
+        title.className = 'heatmap-year-title';
         title.textContent = year.year;
         const grid = document.createElement('div');
-        grid.className = 'heatmap year';
+        grid.className = 'hm-grid';
 
         const jan1 = new Date(year.year, 0, 1);
         const padStart = jan1.getDay();
