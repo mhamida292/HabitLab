@@ -478,7 +478,7 @@ async function refreshDetailStats(id) {
         const stats = await api.get(`/api/v1/habits/${id}/stats`);
         document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
         document.getElementById('statTotalCheckins').textContent    = stats.total;
-        document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_checkin_rate}%`;
+        document.getElementById('statMonthlyRate').textContent      = `${stats.all_time_rate}%`;
         document.getElementById('statStreak').textContent           = stats.streak;
     } catch { /* leave stale */ }
 }
@@ -509,7 +509,7 @@ async function selectHabit(id) {
         const stats = await api.get(`/api/v1/habits/${id}/stats`);
         document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
         document.getElementById('statTotalCheckins').textContent    = stats.total;
-        document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_checkin_rate}%`;
+        document.getElementById('statMonthlyRate').textContent      = `${stats.all_time_rate}%`;
         document.getElementById('statStreak').textContent           = stats.streak;
     } catch { /* leave stale */ }
 

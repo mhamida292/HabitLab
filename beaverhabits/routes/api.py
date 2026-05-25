@@ -416,12 +416,12 @@ async def get_habit_stats(
 
     # Monthly metrics
     month_start = today.replace(day=1)
-    days_elapsed = today.day  # days 1..today inclusive
-
     monthly_records = [r for r in habit.records if r.day >= month_start and r.day <= today]
     monthly_checkins = sum(1 for r in monthly_records if r.count >= target)
-    monthly_completion = sum(r.count for r in monthly_records)
-    monthly_checkin_rate = round(monthly_checkins / days_elapsed * 100, 1) if days_elapsed > 0 else 0.0
+
+    # All-time rate — uses date_started so new habits aren't penalised
+    days_since_start = max(1, (today - started).days + 1)
+    all_time_rate = round(len(done_dates) / days_since_start * 100, 1)
 
     total_completion = sum(r.count for r in habit.records)
 
@@ -434,8 +434,7 @@ async def get_habit_stats(
         "target_count": target,
         "date_started": started.isoformat(),
         "monthly_checkins": monthly_checkins,
-        "monthly_checkin_rate": monthly_checkin_rate,
-        "monthly_completion": monthly_completion,
+        "all_time_rate": all_time_rate,
         "total_completion": total_completion,
     }
 
