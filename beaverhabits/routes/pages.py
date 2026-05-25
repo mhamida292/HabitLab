@@ -2,7 +2,7 @@ import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
@@ -57,6 +57,10 @@ def init_page_routes(app: FastAPI) -> None:
             {"request": request, "habit_id": habit_id},
             headers=NO_CACHE_HEADERS,
         )
+
+    @app.get("/stats")
+    async def stats_redirect():
+        return RedirectResponse(url="/", status_code=302)
 
     @app.get("/notes", response_class=HTMLResponse)
     async def notes_page(request: Request):

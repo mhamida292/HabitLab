@@ -424,9 +424,44 @@ textarea.finp { resize: vertical; min-height: 80px; }
     :root { --list-w: 100vw; --nav-w: 0px; }
     .nav-rail { display: none; }
     .list-panel { width: 100%; }
-    .detail-panel { position: fixed; inset: 0; z-index: 80; transform: translateX(100%); transition: transform .25s ease; }
+    /* Detail panel stops above the mobile tab bar */
+    .detail-panel { position: fixed; top: 0; left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); z-index: 80; transform: translateX(100%); transition: transform .25s ease; overflow-y: auto; }
     .detail-panel.open { transform: translateX(0); }
     .detail-back { display: flex !important; }
+    /* Keep habit list scrollable above tab bar */
+    .habit-list { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    /* Keep notes scrollable above tab bar */
+    .notes-list-col { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+    .notes-editor-col { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+    /* Toast above tab bar */
+    .toast { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── Mobile tab bar ─────────────────────────────────────────  */
+.mobile-tabs { display: none; }
+@media (max-width: 767px) {
+    .mobile-tabs {
+        display: flex;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        height: calc(52px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        background: var(--bg-surface);
+        border-top: 1px solid var(--border);
+        z-index: 90;
+        align-items: center;
+        justify-content: space-around;
+    }
+    .mobile-tab {
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
+        flex: 1; padding: 6px 0;
+        color: var(--text-muted);
+        text-decoration: none; border: none; background: none; cursor: pointer;
+        font-size: 10px; font-family: inherit;
+        transition: color var(--transition);
+    }
+    .mobile-tab svg { width: 20px; height: 20px; }
+    .mobile-tab.active { color: var(--accent-light); }
+    .mobile-tab:hover { color: var(--text-secondary); }
 }
 .detail-back {
     display: none; align-items: center; gap: 8px; padding: 12px 16px;
