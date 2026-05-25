@@ -419,15 +419,31 @@ async def get_habit_stats(
     monthly_records = [r for r in habit.records if r.day >= month_start and r.day <= today]
     monthly_checkins = sum(1 for r in monthly_records if r.count >= target)
 
-    # All-time rate — use earliest done date if it precedes date_started
-    # (handles retroactive checks on dates before the habit was created)
+    # All-time rate
+    sub_goals = habit.sub_goals or []
     effective_start = started
-    if done_dates:
-        earliest_done = min(done_dates)
-        if earliest_done < effective_start:
-            effective_start = earliest_done
-    days_since_start = max(1, (today - effective_start).days + 1)
-    all_time_rate = min(100.0, round(len(done_dates) / days_since_start * 100, 1))
+
+    if sub_goals:
+        # Sub-goal habit: total individual goals done / total possible since tracking started
+        # Effective start = earliest day with any sub-goal recorded (or date_started)
+        records_with_sg = [r for r in habit.records if r.day <= today and r.sub_goals_done]
+        if records_with_sg:
+            earliest_sg = min(r.day for r in records_with_sg)
+            if earliest_sg < effective_start:
+                effective_start = earliest_sg
+        days_since_start = max(1, (today - effective_start).days + 1)
+        total_sg_done = sum(len(r.sub_goals_done) for r in habit.records if r.day <= today)
+        total_possible = len(sub_goals) * days_since_start
+        all_time_rate = min(100.0, round(total_sg_done / total_possible * 100, 1))
+    else:
+        # Regular habit: fully-done days / days elapsed
+        # Use earliest done date if it precedes date_started (retroactive checks)
+        if done_dates:
+            earliest_done = min(done_dates)
+            if earliest_done < effective_start:
+                effective_start = earliest_done
+        days_since_start = max(1, (today - effective_start).days + 1)
+        all_time_rate = min(100.0, round(len(done_dates) / days_since_start * 100, 1))
 
     total_completion = sum(r.count for r in habit.records)
 
