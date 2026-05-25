@@ -610,7 +610,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
 }
 
 /* Inset calendar */
-.cal-section { padding: 12px 16px 8px; }
+.cal-section { padding: 12px 16px 8px; max-width: none; }
 .cal-inset {
     background: var(--bg-elevated); border-radius: 10px; padding: 10px 12px;
 }

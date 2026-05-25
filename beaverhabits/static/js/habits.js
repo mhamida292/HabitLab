@@ -513,8 +513,11 @@ async function selectHabit(id) {
         document.getElementById('statStreak').textContent           = stats.streak;
     } catch { /* leave stale */ }
 
-    // Mount calendar
-    mountCalendar(h.id, h.sub_goals || [], h.target_count, h.records || []);
+    // Mount calendar — refresh stats + sub-goals section on any date toggle
+    mountCalendar(h.id, h.sub_goals || [], h.target_count, h.records || [], () => {
+        refreshDetailStats(h.id);
+        renderSubGoalsSection(h);
+    });
 
     // Render right column
     renderTrendChart(h.records || []);

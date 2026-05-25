@@ -14,12 +14,13 @@ let calState = null;
 /**
  * Mount the monthly calendar into #calContainer.
  * Called by habits.js when a habit is selected.
- * @param {string} habitId
- * @param {Array}  subGoals  [{id, name}, ...]
- * @param {number} target
- * @param {Array}  records   [{day, count, done, sub_goals_done}, ...]
+ * @param {string}   habitId
+ * @param {Array}    subGoals  [{id, name}, ...]
+ * @param {number}   target
+ * @param {Array}    records   [{day, count, done, sub_goals_done}, ...]
+ * @param {Function} onToggle  optional callback(iso) called after a successful toggle
  */
-export function mountCalendar(habitId, subGoals, target, records) {
+export function mountCalendar(habitId, subGoals, target, records, onToggle) {
     const today = new Date();
     const map = new Map();
     for (const r of records) {
@@ -29,6 +30,7 @@ export function mountCalendar(habitId, subGoals, target, records) {
         habitId, subGoals, target,
         year: today.getFullYear(), month: today.getMonth(),
         recordsByDay: map,
+        onToggle: onToggle || null,
     };
 
     const host = document.getElementById('calContainer');
@@ -153,6 +155,7 @@ async function onCalCircleClick(cell, iso) {
         await api.post(`/api/v1/habits/${habitId}/completions`, {
             count: newCount, date: iso, date_fmt: '%Y-%m-%d',
         });
+        calState.onToggle?.(iso);
     } catch (err) {
         recordsByDay.set(iso, prevRec);
         paintCalCircle(cell, prevRec, [], target);
@@ -249,6 +252,7 @@ async function toggleSubgoal(habitId, iso, sgId, rec, recordsByDay, cell) {
         };
         recordsByDay.set(iso, newRec);
         paintCalCircle(cell, newRec, calState.subGoals, calState.target);
+        calState.onToggle?.(iso);
     } catch (err) { toast(err.message, 'error'); }
 }
 
