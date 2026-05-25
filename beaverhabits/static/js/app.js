@@ -289,29 +289,61 @@ window.deleteCurrentHabit = async function() {
     } catch (e) { toast(e.message, 'error'); }
 };
 
-// Icon picker — emoji grid popup
+// Icon picker — fixed-position popup appended to <body>
 const ICON_EMOJIS = [
-    '📌','🎯','💧','🏃','📚','🧘','💪','✍️','🎵','💊',
-    '🥗','😴','📝','🔥','⭐','🌟','💡','🎨','🏋️','🚶',
-    '🌱','🧠','❤️','🙏','🌅','⏰','🏠','💰','🚴','🍎',
-    '☕','🧹','📖','🎸','🌍','🏊','🏆','🌙','☀️','⚡',
-    '🎲','🦁','🌺','🌊','🧪','🍵','🎭','🧗','🛌','🥊',
+    // Movement
+    '🏃','🚶','🧘','🏋️','🚴','🏊','🤸','🧗',
+    // Health
+    '💧','🥗','🍎','💊','😴','🛌','🥦','🫁',
+    // Mind & learning
+    '📖','✍️','🧠','📚','🎨','🎵','🎯','📝',
+    // Daily life
+    '🏠','💰','🧹','☕','🍵','🙏','❤️','📌',
+    // Nature & time
+    '🌱','⭐','🌅','🌙','☀️','🔥','⏰','⚡',
+    // Work & study
+    '💻','📊','🗓️','💡','🎓','✅','📋','🔑',
 ];
+
+let _iconPickerEl = null;
+
+function _getOrCreateIconPicker() {
+    if (_iconPickerEl) return _iconPickerEl;
+    const div = document.createElement('div');
+    div.id = 'iconPickerPopup';
+    div.style.cssText = `
+        display:none; position:fixed; z-index:9999;
+        background:var(--bg-surface); border:1px solid var(--border);
+        border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.35);
+        padding:8px; width:244px;
+    `;
+    const grid = document.createElement('div');
+    grid.id = 'iconPickerGrid';
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(8,1fr);gap:2px';
+    div.appendChild(grid);
+    document.body.appendChild(div);
+    _iconPickerEl = div;
+    return div;
+}
 
 window.openIconPicker = function(e) {
     e.stopPropagation();
-    const popup = document.getElementById('iconPickerPopup');
-    const grid  = document.getElementById('iconPickerGrid');
+    const popup = _getOrCreateIconPicker();
+    const grid  = popup.querySelector('#iconPickerGrid');
+
+    // Toggle off
     if (popup.style.display !== 'none') { popup.style.display = 'none'; return; }
-    grid.innerHTML = '';
+
     const current = document.getElementById('habitIconBtn').textContent.trim();
+    grid.innerHTML = '';
     ICON_EMOJIS.forEach(em => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = em;
-        btn.style.cssText = `font-size:18px;padding:4px;border:none;border-radius:6px;cursor:pointer;background:${em === current ? 'var(--accent)' : 'transparent'};line-height:1`;
-        btn.addEventListener('mouseenter', () => { if (em !== current) btn.style.background = 'var(--bg-elevated)'; });
-        btn.addEventListener('mouseleave', () => { if (em !== current) btn.style.background = 'transparent'; });
+        const isCurrent = em === current;
+        btn.style.cssText = `font-size:17px;padding:5px 2px;border:none;border-radius:6px;cursor:pointer;background:${isCurrent ? 'var(--accent)' : 'transparent'};line-height:1;opacity:0.85;`;
+        btn.addEventListener('mouseenter', () => { if (!isCurrent) btn.style.background = 'var(--bg-elevated)'; });
+        btn.addEventListener('mouseleave', () => { if (!isCurrent) btn.style.background = 'transparent'; });
         btn.addEventListener('click', (ev) => {
             ev.stopPropagation();
             document.getElementById('habitIconBtn').textContent = em;
@@ -319,7 +351,19 @@ window.openIconPicker = function(e) {
         });
         grid.appendChild(btn);
     });
+
+    // Position: anchor below the icon button, fixed to viewport
+    const rect = document.getElementById('habitIconBtn').getBoundingClientRect();
     popup.style.display = 'block';
+    const pw = popup.offsetWidth || 244;
+    const ph = popup.offsetHeight || 260;
+    let left = rect.left;
+    let top  = rect.bottom + 4;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if (top + ph > window.innerHeight - 8) top = rect.top - ph - 4;
+    popup.style.left = `${left}px`;
+    popup.style.top  = `${top}px`;
+
     // Close on outside click
     setTimeout(() => {
         document.addEventListener('click', function handler(ev) {

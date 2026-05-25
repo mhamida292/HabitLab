@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+<head>
+<meta charset="UTF-8">
+<title>Detail Panel – Layout Options</title>
+<link rel="stylesheet" href="/static/css/styles.css">
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-primary); font-family: var(--font); }
+  h1 { color: var(--text-primary); font-size: 15px; margin: 0 0 6px; letter-spacing: .03em; }
+  .subtitle { color: var(--text-muted); font-size: 12px; margin-bottom: 28px; }
+  .options { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .option { flex: 1; min-width: 340px; max-width: 520px; }
+  .option-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 10px; padding-left: 2px;
+  }
+  .panel-shell {
+    background: var(--bg-surface); border-radius: 12px;
+    border: 1px solid var(--border); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  /* shared header */
+  .dh { display:flex; align-items:center; gap:10px; padding:16px 20px 14px; border-bottom:1px solid var(--border); }
+  .dh-icon { font-size:20px; }
+  .dh-title { font-size:15px; font-weight:600; color:var(--text-primary); flex:1; }
+  .dh-more { border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:18px; }
+  /* ── Option A: Two-column ── */
+  .oa-body { display:flex; gap:0; }
+  .oa-left { padding:16px; width:180px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; gap:10px; }
+  .oa-right { flex:1; padding:16px; }
+  .oa-stat { }
+  .oa-stat-val { font-size:20px; font-weight:700; color:var(--accent-light); line-height:1; }
+  .oa-stat-lbl { font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-top:2px; }
+  /* ── Option B: Heatmap ── */
+  .ob-body { padding:14px 20px 16px; }
+  .ob-sc { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
+  .ob-card { background:var(--bg-input); border-radius:8px; padding:8px 10px; }
+  .ob-val { font-size:17px; font-weight:700; color:var(--accent-light); }
+  .ob-lbl { font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-top:2px; }
+  .ob-cal-title { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+  .ob-cal-mini { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; max-width:280px; margin-bottom:14px; }
+  .ob-cell { width:28px; height:28px; border-radius:50%; background:var(--bg-input); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text-secondary); margin:2px auto; }
+  .ob-cell.done { background:var(--accent); color:#fff; }
+  .ob-cell.today { outline:2px solid var(--accent); outline-offset:1px; }
+  .ob-heat-title { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+  .ob-heat { display:flex; gap:2px; overflow:hidden; }
+  .ob-week { display:flex; flex-direction:column; gap:2px; }
+  .ob-sq { width:10px; height:10px; border-radius:2px; }
+  .ob-sq.l0 { background:var(--bg-input); }
+  .ob-sq.l1 { background:var(--accent); opacity:.25; }
+  .ob-sq.l2 { background:var(--accent); opacity:.5; }
+  .ob-sq.l3 { background:var(--accent); opacity:.75; }
+  .ob-sq.l4 { background:var(--accent); }
+  /* ── Option C: Stat pills ── */
+  .oc-body { padding:14px 20px 16px; }
+  .oc-pills { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .oc-pill {
+    background:var(--bg-input); border-radius:20px; padding:5px 12px;
+    font-size:12px; color:var(--text-secondary);
+    display:flex; align-items:center; gap:5px;
+  }
+  .oc-pill b { color:var(--accent-light); font-size:13px; }
+  .oc-cal-title { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+  .oc-cal { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; max-width:340px; }
+  .oc-cell { width:32px; height:32px; border-radius:50%; background:var(--bg-input); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text-secondary); margin:2px auto; }
+  .oc-cell.done { background:var(--accent); color:#fff; }
+  .oc-cell.today { outline:2px solid var(--accent); outline-offset:1px; }
+  /* ── Option D: Notes ── */
+  .od-body { padding:14px 20px 16px; }
+  .od-sc { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:14px; }
+  .od-card { background:var(--bg-input); border-radius:8px; padding:8px 10px; }
+  .od-val { font-size:17px; font-weight:700; color:var(--accent-light); }
+  .od-lbl { font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-top:2px; }
+  .od-cal-title { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+  .od-cal-mini { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; max-width:280px; margin-bottom:14px; }
+  .od-cell { width:28px; height:28px; border-radius:50%; background:var(--bg-input); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text-secondary); margin:2px auto; }
+  .od-cell.done { background:var(--accent); color:#fff; }
+  .od-cell.today { outline:2px solid var(--accent); outline-offset:1px; }
+  .od-notes-title { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; border-top:1px solid var(--border); padding-top:12px; }
+  .od-note { padding:8px 0; border-bottom:1px solid var(--border); }
+  .od-note-date { font-size:10px; color:var(--text-muted); margin-bottom:2px; }
+  .od-note-text { font-size:12px; color:var(--text-secondary); }
+  .od-add-note { font-size:12px; color:var(--accent); margin-top:10px; cursor:pointer; background:none; border:none; padding:0; }
+  /* theme toggle */
+  .tbar { position:fixed; top:16px; right:20px; display:flex; gap:8px; }
+  .tbtn { padding:5px 12px; border-radius:20px; border:1px solid var(--border); background:var(--bg-surface); color:var(--text-secondary); cursor:pointer; font-size:11px; }
+  .tbtn:hover { background:var(--bg-elevated); }
+</style>
+</head>
+<body>
+
+<div class="tbar">
+  <button class="tbtn" onclick="setTheme('midnight')">🌙 Dark</button>
+  <button class="tbtn" onclick="setTheme('arctic')">☀️ Light</button>
+</div>
+
+<h1>Detail panel — layout options</h1>
+<p class="subtitle">All four options with your real design tokens. Toggle dark / light above.</p>
+
+<div class="options">
+
+  <!-- ── Option A: Two-column ── -->
+  <div class="option">
+    <div class="option-label">A — Two-column (stats left · calendar right)</div>
+    <div class="panel-shell">
+      <div class="dh">
+        <div class="dh-icon">💧</div>
+        <div class="dh-title">Drink water</div>
+        <button class="dh-more">···</button>
+      </div>
+      <div class="oa-body">
+        <div class="oa-left">
+          <div class="oa-stat"><div class="oa-stat-val">19</div><div class="oa-stat-lbl">Monthly check-ins</div></div>
+          <div class="oa-stat"><div class="oa-stat-val">45</div><div class="oa-stat-lbl">Total check-ins</div></div>
+          <div class="oa-stat"><div class="oa-stat-val">76%</div><div class="oa-stat-lbl">Monthly rate</div></div>
+          <div class="oa-stat"><div class="oa-stat-val" style="color:var(--streak)">🔥 5</div><div class="oa-stat-lbl">Streak</div></div>
+          <div class="oa-stat"><div class="oa-stat-val">19</div><div class="oa-stat-lbl">Monthly completion</div></div>
+          <div class="oa-stat"><div class="oa-stat-val">45</div><div class="oa-stat-lbl">Total completion</div></div>
+        </div>
+        <div class="oa-right">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Monthly view</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <button style="border:1px solid var(--border);background:none;border-radius:6px;width:22px;height:22px;cursor:pointer;color:var(--text-secondary)">‹</button>
+            <span style="font-size:13px;font-weight:600;flex:1;color:var(--text-primary)">May 2026</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:3px;">
+            <span style="font-size:8px;text-align:center;color:var(--text-muted)">S</span><span style="font-size:8px;text-align:center;color:var(--text-muted)">M</span><span style="font-size:8px;text-align:center;color:var(--text-muted)">T</span><span style="font-size:8px;text-align:center;color:var(--text-muted)">W</span><span style="font-size:8px;text-align:center;color:var(--text-muted)">T</span><span style="font-size:8px;text-align:center;color:var(--text-muted)">F</span><span style="font-size:8px;text-align:center;color:var(--text-muted)">S</span>
+          </div>
+          <div id="calA" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Option B: Heatmap ── -->
+  <div class="option">
+    <div class="option-label">B — Heatmap below calendar</div>
+    <div class="panel-shell">
+      <div class="dh">
+        <div class="dh-icon">💧</div>
+        <div class="dh-title">Drink water</div>
+        <button class="dh-more">···</button>
+      </div>
+      <div class="ob-body">
+        <div class="ob-sc">
+          <div class="ob-card"><div class="ob-val">19</div><div class="ob-lbl">Monthly ✓</div></div>
+          <div class="ob-card"><div class="ob-val">45</div><div class="ob-lbl">Total ✓</div></div>
+          <div class="ob-card"><div class="ob-val">76%</div><div class="ob-lbl">Rate</div></div>
+          <div class="ob-card"><div class="ob-val" style="color:var(--streak)">🔥5</div><div class="ob-lbl">Streak</div></div>
+          <div class="ob-card"><div class="ob-val">19</div><div class="ob-lbl">Mo. comp.</div></div>
+          <div class="ob-card"><div class="ob-val">45</div><div class="ob-lbl">Total comp.</div></div>
+        </div>
+        <div class="ob-cal-title">Monthly view &nbsp;<span style="font-weight:400;color:var(--text-muted)">May 2026</span></div>
+        <div class="ob-cal-mini" id="calB"></div>
+        <div class="ob-heat-title">Annual overview</div>
+        <div class="ob-heat" id="heatB"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Option C: Stat pills ── -->
+  <div class="option">
+    <div class="option-label">C — Compact stat pills + wider calendar</div>
+    <div class="panel-shell">
+      <div class="dh">
+        <div class="dh-icon">💧</div>
+        <div class="dh-title">Drink water</div>
+        <button class="dh-more">···</button>
+      </div>
+      <div class="oc-body">
+        <div class="oc-pills">
+          <div class="oc-pill"><b>19</b> check-ins</div>
+          <div class="oc-pill"><b>45</b> total</div>
+          <div class="oc-pill"><b>76%</b> rate</div>
+          <div class="oc-pill">🔥 <b>5</b> streak</div>
+          <div class="oc-pill"><b>19</b> mo. completion</div>
+          <div class="oc-pill"><b>45</b> total completion</div>
+        </div>
+        <div class="oc-cal-title">Monthly view &nbsp;<span style="font-weight:400;color:var(--text-muted)">May 2026</span></div>
+        <div class="oc-cal" id="calC"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Option D: Notes ── -->
+  <div class="option">
+    <div class="option-label">D — Notes / journal log below</div>
+    <div class="panel-shell">
+      <div class="dh">
+        <div class="dh-icon">💧</div>
+        <div class="dh-title">Drink water</div>
+        <button class="dh-more">···</button>
+      </div>
+      <div class="od-body">
+        <div class="od-sc">
+          <div class="od-card"><div class="od-val">19</div><div class="od-lbl">Monthly ✓</div></div>
+          <div class="od-card"><div class="od-val">45</div><div class="od-lbl">Total ✓</div></div>
+          <div class="od-card"><div class="od-val">76%</div><div class="od-lbl">Rate</div></div>
+          <div class="od-card"><div class="od-val" style="color:var(--streak)">🔥 5</div><div class="od-lbl">Streak</div></div>
+        </div>
+        <div class="od-cal-title">Monthly view &nbsp;<span style="font-weight:400;color:var(--text-muted)">May 2026</span></div>
+        <div class="od-cal-mini" id="calD"></div>
+        <div class="od-notes-title">Notes</div>
+        <div class="od-note">
+          <div class="od-note-date">May 22</div>
+          <div class="od-note-text">Drank 3L today — feeling great 💪</div>
+        </div>
+        <div class="od-note">
+          <div class="od-note-date">May 18</div>
+          <div class="od-note-text">Forgot in the morning, caught up at noon</div>
+        </div>
+        <div class="od-note">
+          <div class="od-note-date">May 12</div>
+          <div class="od-note-text">Only 1.5L, busy day</div>
+        </div>
+        <button class="od-add-note">＋ Add note</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.body.setAttribute('data-theme', t);
+}
+
+// Build tiny calendar cells
+const DONE_DAYS = [1,2,3,4,5,7,8,9,10,11,12,14,15,16,17,18,19,21,22,23,24];
+const TODAY = 25;
+const PAD = 3; // May 1 = Thursday (pad 4 cells: Sun=0..Wed=3)
+
+function buildCal(containerId, cellClass, size) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  // padding
+  for (let i = 0; i < PAD; i++) {
+    const c = document.createElement('div');
+    c.className = cellClass;
+    c.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:transparent;margin:2px auto;`;
+    c.textContent = '';
+    el.appendChild(c);
+  }
+  for (let d = 1; d <= 31; d++) {
+    const c = document.createElement('div');
+    c.className = cellClass + (DONE_DAYS.includes(d) ? ' done' : '') + (d === TODAY ? ' today' : '');
+    c.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${size < 28 ? 9 : 10}px;margin:2px auto;`;
+    if (DONE_DAYS.includes(d)) {
+      c.style.background = 'var(--accent)';
+      c.style.color = '#fff';
+      c.textContent = '✓';
+    } else {
+      c.style.background = 'var(--bg-input)';
+      c.style.color = 'var(--text-secondary)';
+      c.textContent = d;
+    }
+    if (d === TODAY) {
+      c.style.outline = '2px solid var(--accent)';
+      c.style.outlineOffset = '1px';
+      if (!DONE_DAYS.includes(d)) {
+        c.style.background = 'var(--bg-input)';
+        c.style.color = 'var(--text-secondary)';
+      }
+    }
+    el.appendChild(c);
+  }
+}
+
+// Build heatmap (52 weeks)
+function buildHeatmap() {
+  const el = document.getElementById('heatB');
+  if (!el) return;
+  const levels = [0,1,2,3,4];
+  for (let w = 0; w < 52; w++) {
+    const week = document.createElement('div');
+    week.className = 'ob-week';
+    for (let d = 0; d < 7; d++) {
+      const sq = document.createElement('div');
+      const lvl = Math.random() > 0.35 ? levels[Math.floor(Math.random() * 5)] : 0;
+      sq.className = `ob-sq l${lvl}`;
+      week.appendChild(sq);
+    }
+    el.appendChild(week);
+  }
+}
+
+buildCal('calA', 'oa-cell', 26);
+buildCal('calB', 'ob-cell', 26);
+buildCal('calC', 'oc-cell', 30);
+buildCal('calD', 'od-cell', 26);
+buildHeatmap();
+</script>
+</body>
+</html>
