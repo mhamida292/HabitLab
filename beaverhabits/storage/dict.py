@@ -71,6 +71,14 @@ class DictRecord(CheckedRecord, DictStorage):
     def count(self, value: int) -> None:
         self.data["count"] = max(0, int(value))
 
+    @property
+    def sub_goals_done(self) -> list[str]:
+        return self.data.get("sub_goals_done", [])
+
+    @sub_goals_done.setter
+    def sub_goals_done(self, value: list[str]) -> None:
+        self.data["sub_goals_done"] = list(value)
+
 
 class HabitDataCache:
     def __init__(self, habit: "DictHabit"):
@@ -210,6 +218,22 @@ class DictHabit(Habit[DictRecord], DictStorage):
     @chips.setter
     def chips(self, value: list[str]) -> None:
         self.data["chips"] = value
+
+    @property
+    def sub_goals(self) -> list[dict]:
+        return self.data.get("sub_goals", [])
+
+    @sub_goals.setter
+    def sub_goals(self, value: list[dict]) -> None:
+        self.data["sub_goals"] = list(value)
+
+    @property
+    def sub_goal_unit(self) -> str:
+        return self.data.get("sub_goal_unit", "items")
+
+    @sub_goal_unit.setter
+    def sub_goal_unit(self, value: str) -> None:
+        self.data["sub_goal_unit"] = value or "items"
 
     @property
     def ticked_days(self) -> list[datetime.date]:
