@@ -68,6 +68,23 @@
     --modal-bg:     rgba(0,0,0,.78);
 }
 [data-theme="paper"] {
+    --bg-primary:   #f2ede4;
+    --bg-surface:   #faf7f2;
+    --bg-elevated:  #e8e2d8;
+    --bg-input:     #eee8de;
+    --border:       #d8d0c4;
+    --accent:       #4338ca;
+    --accent-light: #6366f1;
+    --accent-sel:   #e5e4f8;
+    --text-primary: #1c1810;
+    --text-secondary:#80746a;
+    --text-muted:   #b0a89a;
+    --streak:       #c2410c;
+    --danger:       #dc2626;
+    --success:      #15803d;
+    --modal-bg:     rgba(0,0,0,.32);
+}
+[data-theme="obsidian-light"] {
     --bg-primary:   #ffffff;
     --bg-surface:   #fafafa;
     --bg-elevated:  #f0f0f0;
