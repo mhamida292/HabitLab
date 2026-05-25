@@ -8,7 +8,12 @@
 
             <!-- Icon + Name row -->
             <div class="fg" style="flex-direction:row;align-items:center;gap:10px">
-                <button class="hrow-icon" id="habitIconBtn" style="flex-shrink:0;width:44px;height:44px;font-size:22px;cursor:pointer;border:1px solid var(--border);background:var(--bg-elevated);border-radius:10px" onclick="openIconPicker()">📌</button>
+                <div style="position:relative;flex-shrink:0">
+                    <button class="hrow-icon" id="habitIconBtn" style="width:44px;height:44px;font-size:22px;cursor:pointer;border:1px solid var(--border);background:var(--bg-elevated);border-radius:10px" onclick="openIconPicker(event)">📌</button>
+                    <div id="iconPickerPopup" style="display:none;position:absolute;top:50px;left:0;z-index:300;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.35);padding:8px;width:220px">
+                        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px" id="iconPickerGrid"></div>
+                    </div>
+                </div>
                 <div class="fg" style="flex:1">
                     <label class="fl">Name</label>
                     <input class="finp" id="habitNameIn" maxlength="80" placeholder="e.g. Salah">

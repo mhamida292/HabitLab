@@ -289,7 +289,44 @@ window.deleteCurrentHabit = async function() {
     } catch (e) { toast(e.message, 'error'); }
 };
 
-// Icon picker (simple — emoji typed directly into the button)
-window.openIconPicker = function() {
-    document.getElementById('habitIconBtn').focus();
+// Icon picker — emoji grid popup
+const ICON_EMOJIS = [
+    '📌','🎯','💧','🏃','📚','🧘','💪','✍️','🎵','💊',
+    '🥗','😴','📝','🔥','⭐','🌟','💡','🎨','🏋️','🚶',
+    '🌱','🧠','❤️','🙏','🌅','⏰','🏠','💰','🚴','🍎',
+    '☕','🧹','📖','🎸','🌍','🏊','🏆','🌙','☀️','⚡',
+    '🎲','🦁','🌺','🌊','🧪','🍵','🎭','🧗','🛌','🥊',
+];
+
+window.openIconPicker = function(e) {
+    e.stopPropagation();
+    const popup = document.getElementById('iconPickerPopup');
+    const grid  = document.getElementById('iconPickerGrid');
+    if (popup.style.display !== 'none') { popup.style.display = 'none'; return; }
+    grid.innerHTML = '';
+    const current = document.getElementById('habitIconBtn').textContent.trim();
+    ICON_EMOJIS.forEach(em => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = em;
+        btn.style.cssText = `font-size:18px;padding:4px;border:none;border-radius:6px;cursor:pointer;background:${em === current ? 'var(--accent)' : 'transparent'};line-height:1`;
+        btn.addEventListener('mouseenter', () => { if (em !== current) btn.style.background = 'var(--bg-elevated)'; });
+        btn.addEventListener('mouseleave', () => { if (em !== current) btn.style.background = 'transparent'; });
+        btn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            document.getElementById('habitIconBtn').textContent = em;
+            popup.style.display = 'none';
+        });
+        grid.appendChild(btn);
+    });
+    popup.style.display = 'block';
+    // Close on outside click
+    setTimeout(() => {
+        document.addEventListener('click', function handler(ev) {
+            if (!popup.contains(ev.target)) {
+                popup.style.display = 'none';
+                document.removeEventListener('click', handler);
+            }
+        });
+    }, 0);
 };
