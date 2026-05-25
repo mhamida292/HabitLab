@@ -39,7 +39,7 @@
     --mono: 'JetBrains Mono', monospace;
     --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
     --nav-w:    46px;
-    --list-w:   340px;
+    --list-w:   420px;
     --transition: .14s ease;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }

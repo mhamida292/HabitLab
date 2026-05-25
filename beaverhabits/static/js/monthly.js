@@ -156,6 +156,9 @@ async function onCalCircleClick(cell, iso) {
             count: newCount, date: iso, date_fmt: '%Y-%m-%d',
         });
         calState.onToggle?.(iso);
+        document.dispatchEvent(new CustomEvent('cal:toggled', {
+            detail: { habitId, iso, newRec, prevDone: prevRec.done },
+        }));
     } catch (err) {
         recordsByDay.set(iso, prevRec);
         paintCalCircle(cell, prevRec, [], target);
@@ -253,6 +256,9 @@ async function toggleSubgoal(habitId, iso, sgId, rec, recordsByDay, cell) {
         recordsByDay.set(iso, newRec);
         paintCalCircle(cell, newRec, calState.subGoals, calState.target);
         calState.onToggle?.(iso);
+        document.dispatchEvent(new CustomEvent('cal:toggled', {
+            detail: { habitId, iso, newRec, prevDone: rec.done },
+        }));
     } catch (err) { toast(err.message, 'error'); }
 }
 

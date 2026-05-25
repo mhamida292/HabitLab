@@ -560,6 +560,46 @@ export async function refreshHabits() {
 // Expose for app.js (avoids cross-module-instance issue with dynamic import)
 window._refreshHabits = refreshHabits;
 
+// ── Calendar toggle → instant stat refresh ────────────────────
+// monthly.js dispatches 'cal:toggled' after every successful date click.
+// We handle it here to keep stats snappy without waiting for a server round-trip.
+document.addEventListener('cal:toggled', ({ detail: { habitId, iso, newRec, prevDone } }) => {
+    // Update in-memory record so the habit list row re-renders correctly
+    const habit = allHabits.find(h => h.id === habitId);
+    if (habit) {
+        let rec = habit.records?.find(r => r.day === iso);
+        if (!rec) {
+            rec = { day: iso, count: 0, done: false, sub_goals_done: [] };
+            (habit.records = habit.records || []).push(rec);
+        }
+        rec.count = newRec.count;
+        rec.done  = newRec.done;
+        rec.sub_goals_done = newRec.sub_goals_done || [];
+        // Re-render the list so today's row dot/check updates immediately
+        renderHabitList();
+    }
+
+    // Only update detail panel if this is the selected habit
+    if (habitId !== selectedHabitId) return;
+
+    // Optimistic stat update — adjust monthly count right now, no round-trip
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    if (iso.slice(0, 7) === currentMonth) {
+        const el = document.getElementById('statMonthlyCheckins');
+        if (el) {
+            const delta = newRec.done && !prevDone ? 1 : !newRec.done && prevDone ? -1 : 0;
+            if (delta !== 0) el.textContent = Math.max(0, (parseInt(el.textContent) || 0) + delta);
+        }
+    }
+
+    // Accurate async refresh for streak, rate, totals
+    refreshDetailStats(habitId);
+    // Re-render sub-goals if the toggled date is today
+    if (habit && iso === new Date().toISOString().slice(0, 10)) {
+        renderSubGoalsSection(habit);
+    }
+});
+
 // ── Initialise ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('habitList')) return;
