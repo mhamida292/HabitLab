@@ -1,16 +1,17 @@
-<div class="ov" id="settingsOv">
-    <div class="modal">
-        <div class="mh">
+<div class="settings-drawer" id="settingsDrawer">
+    <div class="settings-shade" onclick="closeSettings()"></div>
+    <div class="settings-panel">
+        <div class="settings-header">
             <div class="mt">Settings</div>
             <button class="mx" onclick="closeSettings()">&times;</button>
         </div>
-        <div class="mb">
+        <div class="settings-body">
 
             <div class="ss-section">
-                <div class="ss-title">Theme</div>
+                <div class="ss-title">Appearance</div>
                 <div class="srow">
-                    <div><div class="slabel">Color theme</div><div class="sdesc">Switch between dark and light</div></div>
-                    <select id="setThemeSel">
+                    <div class="slabel">Theme</div>
+                    <select class="finp" id="setThemeSel" style="width:auto">
                         <option value="midnight">Midnight (dark)</option>
                         <option value="arctic">Arctic (light)</option>
                     </select>
@@ -20,19 +21,19 @@
             <div class="ss-section">
                 <div class="ss-title">Master password</div>
                 <div class="fg"><label class="fl">Current</label><input class="finp" type="password" id="cpCurrent"></div>
-                <div class="fg"><label class="fl">New</label><input class="finp" type="password" id="cpNew" minlength="8"></div>
-                <button class="bpri" id="cpSubmit">Change password</button>
+                <div class="fg"><label class="fl">New (8+ chars)</label><input class="finp" type="password" id="cpNew" minlength="8"></div>
+                <button class="bpri" id="cpSubmit" style="align-self:flex-start">Change password</button>
             </div>
 
             <div class="ss-section">
                 <div class="ss-title">Data</div>
                 <div style="display:flex;flex-direction:column;gap:8px">
-                    <button class="bpri" id="exportBtn" style="width:100%">Export JSON</button>
-                    <button class="bgho" id="importBtn" style="width:100%">Import JSON</button>
-                    <button class="bgho" id="seedBtn" style="width:100%">Load sample data</button>
+                    <button class="bpri" id="exportBtn">Export JSON</button>
+                    <button class="bgho" id="importBtn">Import JSON</button>
+                    <button class="bgho" id="seedBtn">Load sample data</button>
                     <input type="file" id="importFile" accept="application/json" style="display:none">
                 </div>
-                <div class="cwarn">Sample data adds 5 habits with 60 days of randomly-ticked history.</div>
+                <div class="cwarn" style="margin-top:6px">Sample data adds 5 habits with 60 days of randomly-ticked history.</div>
             </div>
 
             <div class="ss-section">
@@ -43,7 +44,7 @@
             <div class="ss-section">
                 <div class="ss-title">Danger zone</div>
                 <button class="bdng" id="wipeBtn" style="width:100%;padding:14px">Delete all data</button>
-                <div class="cwarn">Permanently deletes every habit, every note, your master password, and your account. You'll be sent back to the setup screen.</div>
+                <div class="cwarn" style="margin-top:6px">Permanently deletes every habit, every note, your master password, and your account. You'll be sent back to the setup screen.</div>
             </div>
 
         </div>
