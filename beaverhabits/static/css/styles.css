@@ -199,8 +199,7 @@ button, input, select, textarea { font-family: inherit; }
     display: flex; flex-direction: column; overflow-y: auto;
 }
 #detailContent {
-    max-width: 560px; width: 100%;
-    display: flex; flex-direction: column;
+    width: 100%; display: flex; flex-direction: column;
 }
 .detail-empty {
     flex: 1; display: flex; flex-direction: column;
@@ -236,7 +235,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 /* Monthly calendar */
-.cal-section { padding: 16px 20px 0; }
+.cal-section { padding: 16px 20px 0; max-width: 440px; }
 .cal-section-title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
 .cal-nav-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .cal-month-label { font-size: 14px; font-weight: 600; flex: 1; }
@@ -263,9 +262,7 @@ button, input, select, textarea { font-family: inherit; }
 .cal-circle.out-of-month { opacity: .25; pointer-events: none; }
 .cal-circle.today { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cal-circle.future { cursor: default; }
-.cal-circle.done { background: var(--accent); color: #fff; }
-.cal-circle.done::after { content: '✓'; font-size: 12px; font-weight: 700; position: absolute; }
-.cal-circle.done span { display: none; }
+.cal-circle.done { background: var(--accent); color: #fff; font-weight: 700; }
 .cal-circle.partial { background: none; }
 .cal-circle:hover:not(.out-of-month):not(.future):not(.done) { background: var(--bg-elevated); }
 

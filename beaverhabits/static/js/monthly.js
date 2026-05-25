@@ -105,13 +105,14 @@ function renderCalGrid(host) {
 
 function paintCalCircle(cell, rec, subGoals, target) {
     cell.classList.remove('done', 'partial');
+    cell.style.background = '';
     cell.innerHTML = '';
 
     const dayNum = new Date(cell.dataset.date + 'T00:00:00').getDate();
 
     if (rec.done || rec.count >= target) {
         cell.classList.add('done');
-        // done::after shows ✓ via CSS; hide day number
+        cell.innerHTML = '<span>✓</span>';
     } else if (subGoals.length > 0 && rec.sub_goals_done.length > 0) {
         // Partial — draw conic ring
         cell.classList.add('partial');
@@ -311,4 +312,18 @@ export function renderDailyChart(target, records) {
                   fill="none" stroke="var(--accent)" stroke-width="1.5"
                   stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`;
+}
+
+/**
+ * Update a single day in the calendar without re-mounting.
+ * Called by habits.js after a list-row toggle to keep calendar in sync.
+ * @param {string} iso  'YYYY-MM-DD'
+ * @param {{count:number, done:boolean, sub_goals_done:string[]}} rec
+ */
+export function updateCalendarRecord(iso, rec) {
+    if (!calState) return;
+    calState.recordsByDay.set(iso, rec);
+    // Re-paint the cell if it's currently visible in the grid
+    const cell = document.querySelector(`.cal-circle[data-date="${iso}"]`);
+    if (cell) paintCalCircle(cell, rec, calState.subGoals, calState.target);
 }

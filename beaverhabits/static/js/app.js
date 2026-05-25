@@ -274,8 +274,7 @@ window.saveHabit = async function() {
         }
         toast(_editingHabit ? 'Saved' : 'Created');
         window.closeHabitModal();
-        const { refreshHabits } = await import('/static/js/habits.js');
-        await refreshHabits();
+        await window._refreshHabits?.();
     } catch (e) { toast(e.message, 'error'); }
 };
 
@@ -285,8 +284,7 @@ window.deleteCurrentHabit = async function() {
     try {
         await api.delete(`/api/v1/habits/${_editingHabit.id}`);
         window.closeHabitModal();
-        const { refreshHabits } = await import('/static/js/habits.js');
-        await refreshHabits();
+        await window._refreshHabits?.();
         toast('Deleted');
     } catch (e) { toast(e.message, 'error'); }
 };

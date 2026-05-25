@@ -1,6 +1,6 @@
 // beaverhabits/static/js/habits.js
 import { api, toast } from '/static/js/api.js';
-import { mountCalendar, renderDailyChart } from '/static/js/monthly.js';
+import { mountCalendar, updateCalendarRecord } from '/static/js/monthly.js';
 import { openNoteEditor } from '/static/js/notes.js';
 
 // ── State ─────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ function buildRegularRow(h, activeIso) {
             const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
                 count: newCount, date: activeIso, date_fmt: '%Y-%m-%d',
             });
-            // Update local state directly, avoid full N+1 refresh
+            // Update local state, avoid full N+1 refresh
             const habit = allHabits.find(x => x.id === h.id);
             if (habit) {
                 let rec = habit.records?.find(r => r.day === activeIso);
@@ -192,6 +192,10 @@ function buildRegularRow(h, activeIso) {
                 }
                 rec.count = result.count;
                 rec.done = result.done;
+                // Keep calendar in sync if this is the selected habit
+                if (h.id === selectedHabitId) {
+                    updateCalendarRecord(activeIso, rec);
+                }
             }
             renderHabitList();
         } catch (err) {
@@ -259,7 +263,7 @@ function buildSubgoalRow(h, activeIso) {
                 const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
                     date: activeIso, date_fmt: '%Y-%m-%d', sub_goal_id: sg.id,
                 });
-                // Optimistic: update local record state directly, re-render list only
+                // Update local record, re-render list only (no N+1 refresh)
                 const habit = allHabits.find(x => x.id === h.id);
                 if (habit) {
                     let rec = habit.records?.find(r => r.day === activeIso);
@@ -270,6 +274,9 @@ function buildSubgoalRow(h, activeIso) {
                     rec.sub_goals_done = result.sub_goals_done;
                     rec.count = result.count;
                     rec.done = result.done;
+                    if (h.id === selectedHabitId) {
+                        updateCalendarRecord(activeIso, rec);
+                    }
                 }
                 renderHabitList();
             } catch (err) {
@@ -319,9 +326,6 @@ async function selectHabit(id) {
 
     // Mount calendar
     mountCalendar(h.id, h.sub_goals || [], h.target_count, h.records || []);
-
-    // Render line chart
-    renderDailyChart(h.target_count, h.records || []);
 }
 
 window.closeDetail = function() {
@@ -355,6 +359,9 @@ export async function refreshHabits() {
     renderHabitList();
     updateActiveDayChip();
 }
+
+// Expose for app.js (avoids cross-module-instance issue with dynamic import)
+window._refreshHabits = refreshHabits;
 
 // ── Initialise ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
