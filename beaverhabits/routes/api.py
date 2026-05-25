@@ -104,6 +104,15 @@ async def get_habits(
             ),
             "sub_goals": x.sub_goals,
             "sub_goal_unit": x.sub_goal_unit,
+            "records": [
+                {
+                    "day": r.day.strftime("%Y-%m-%d"),
+                    "done": r.done,
+                    "count": r.count,
+                    "sub_goals_done": r.sub_goals_done,
+                }
+                for r in x.records
+            ],
         })
     return out
 

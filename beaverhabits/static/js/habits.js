@@ -192,9 +192,10 @@ function buildRegularRow(h, activeIso) {
                 }
                 rec.count = result.count;
                 rec.done = result.done;
-                // Keep calendar in sync if this is the selected habit
+                // Keep calendar + stats in sync if this is the selected habit
                 if (h.id === selectedHabitId) {
                     updateCalendarRecord(activeIso, rec);
+                    refreshDetailStats(h.id);
                 }
             }
             renderHabitList();
@@ -276,6 +277,7 @@ function buildSubgoalRow(h, activeIso) {
                     rec.done = result.done;
                     if (h.id === selectedHabitId) {
                         updateCalendarRecord(activeIso, rec);
+                        refreshDetailStats(h.id);
                     }
                 }
                 renderHabitList();
@@ -294,6 +296,20 @@ function buildSubgoalRow(h, activeIso) {
         selectHabit(h.id);
     });
     return row;
+}
+
+// ── Refresh detail stat cards (called after each toggle) ──────
+async function refreshDetailStats(id) {
+    if (id !== selectedHabitId) return;
+    try {
+        const stats = await api.get(`/api/v1/habits/${id}/stats`);
+        document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
+        document.getElementById('statTotalCheckins').textContent    = stats.total;
+        document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_checkin_rate}%`;
+        document.getElementById('statStreak').textContent           = stats.streak;
+        document.getElementById('statMonthlyCompletion').textContent = stats.monthly_completion;
+        document.getElementById('statTotalCompletion').textContent  = stats.total_completion;
+    } catch { /* leave stale */ }
 }
 
 // ── Detail panel ──────────────────────────────────────────────
