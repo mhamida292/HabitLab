@@ -157,12 +157,12 @@ function makeListItem(note) {
 function selectNote(id) {
     state.selectedId = id;
     renderMain();
-    // On mobile: show editor, hide list
+    // On mobile: slide editor in over list (same pattern as habits detail panel)
     if (window.innerWidth <= 767) {
-        const listCol = document.getElementById('notesListCol');
-        const editorCol = document.getElementById('notesEditorCol');
-        if (listCol) listCol.classList.add('mobile-hide');
-        if (editorCol) editorCol.classList.add('mobile-show');
+        requestAnimationFrame(() => {
+            const editorCol = document.getElementById('notesEditorCol');
+            if (editorCol) editorCol.classList.add('mobile-show');
+        });
     }
 }
 
@@ -212,18 +212,19 @@ function renderEditor(container, note) {
     body.addEventListener('input', () => scheduleSave(note.id, { body: body.value }));
     container.appendChild(body);
 
-    // Back button for mobile
-    if (window.innerWidth <= 767) {
-        const backBtn = document.createElement('button');
-        backBtn.className = 'ibtn';
-        backBtn.style.cssText = 'margin:8px 16px;font-size:12px;';
-        backBtn.textContent = '← Back';
-        backBtn.addEventListener('click', () => {
+    // Back button — shown on mobile via CSS, slides editor out before re-rendering
+    const backBtn = document.createElement('button');
+    backBtn.className = 'note-back-btn';
+    backBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>Notes';
+    backBtn.addEventListener('click', () => {
+        const editorCol = document.getElementById('notesEditorCol');
+        if (editorCol) editorCol.classList.remove('mobile-show');
+        setTimeout(() => {
             state.selectedId = null;
             renderMain();
-        });
-        container.insertBefore(backBtn, container.firstChild);
-    }
+        }, 250);
+    });
+    container.insertBefore(backBtn, container.firstChild);
 }
 
 // ── Grid view ──────────────────────────────────────────────────────────────

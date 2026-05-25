@@ -44,7 +44,7 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow: hidden; }
-body { font-family: var(--sans); background: var(--bg-primary); color: var(--text-primary); font-size: 13px; }
+body { font-family: var(--sans); background: var(--bg-primary); color: var(--text-primary); font-size: 14px; }
 button, input, select, textarea { font-family: inherit; }
 ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
@@ -94,7 +94,7 @@ button, input, select, textarea { font-family: inherit; }
     display: flex; align-items: center; gap: 8px;
     border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
-.list-topbar-title { font-size: 14px; font-weight: 600; flex: 1; }
+.list-topbar-title { font-size: 15px; font-weight: 600; flex: 1; }
 .list-topbar-title svg { width: 10px; height: 10px; margin-left: 4px; opacity: .5; }
 .ibtn {
     width: 28px; height: 28px; border-radius: 6px; border: none; background: none;
@@ -160,9 +160,9 @@ button, input, select, textarea { font-family: inherit; }
     background: var(--bg-elevated); border: 1px solid var(--border);
 }
 .hrow-body { flex: 1; min-width: 0; }
-.hrow-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrow-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hrow-name.done { text-decoration: line-through; color: var(--text-muted); }
-.hrow-meta { display: flex; gap: 8px; margin-top: 2px; font-size: 11px; color: var(--text-muted); }
+.hrow-meta { display: flex; gap: 8px; margin-top: 2px; font-size: 12px; color: var(--text-muted); }
 
 /* Regular habit toggle */
 .hrow-toggle {
@@ -430,9 +430,8 @@ textarea.finp { resize: vertical; min-height: 80px; }
     .detail-back { display: flex !important; }
     /* Keep habit list scrollable above tab bar */
     .habit-list { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
-    /* Keep notes scrollable above tab bar */
+    /* Keep notes list scrollable above tab bar */
     .notes-list-col { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
-    .notes-editor-col { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
     /* Toast above tab bar */
     .toast { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
 }
@@ -464,9 +463,9 @@ textarea.finp { resize: vertical; min-height: 80px; }
     .mobile-tab:hover { color: var(--text-secondary); }
 }
 .detail-back {
-    display: none; align-items: center; gap: 8px; padding: 12px 16px;
-    font-size: 13px; color: var(--accent-light); cursor: pointer;
-    border-bottom: 1px solid var(--border);
+    display: none; align-items: center; gap: 5px; padding: 10px 16px 2px;
+    font-size: 12px; font-weight: 500; color: var(--accent-light); cursor: pointer;
+    opacity: 0.85;
 }
 
 /* ── Notes page ──────────────────────────────────────────────────────────── */
@@ -516,7 +515,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
 .notes-list-split { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 
 .notes-list-col {
-    width: 240px; flex-shrink: 0;
+    width: var(--list-w); flex-shrink: 0;
     border-right: 1px solid var(--border); overflow-y: auto;
 }
 .note-list-item {
@@ -529,17 +528,17 @@ textarea.finp { resize: vertical; min-height: 80px; }
     border-left: 2px solid var(--accent); padding-left: 12px;
 }
 .note-list-title {
-    font-size: 12px; font-weight: 600; color: var(--text-primary);
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .note-list-meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.note-list-date { font-size: 10px; color: var(--text-muted); }
+.note-list-date { font-size: 11px; color: var(--text-muted); }
 .note-habit-pill {
     font-size: 9px; font-weight: 700; background: #14532d22;
     color: #4ade80; border-radius: 4px; padding: 1px 5px;
 }
 .note-list-preview {
-    font-size: 11px; color: var(--text-secondary); margin-top: 2px;
+    font-size: 12px; color: var(--text-secondary); margin-top: 2px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -620,11 +619,30 @@ textarea.finp { resize: vertical; min-height: 80px; }
 /* ── Mobile notes ── */
 @media (max-width: 767px) {
     .notes-list-col { width: 100%; border-right: none; }
-    .notes-editor-col { display: none; width: 100%; }
-    .notes-list-col.mobile-hide { display: none; }
-    .notes-editor-col.mobile-show { display: flex; }
+    /* Editor slides in as a fixed overlay — same pattern as habits detail panel */
+    .notes-editor-col {
+        position: fixed; top: 0; left: 0; right: 0;
+        bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+        z-index: 80;
+        background: var(--bg-surface);
+        transform: translateX(100%);
+        transition: transform .25s ease;
+        display: flex !important; flex-direction: column; overflow-y: auto;
+    }
+    .notes-editor-col.mobile-show { transform: translateX(0); }
     .notes-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* Back button inside note editor (mobile only) */
+.note-back-btn {
+    display: none; align-items: center; gap: 5px;
+    padding: 10px 16px 2px;
+    font-size: 12px; font-weight: 500;
+    color: var(--accent-light); cursor: pointer; opacity: 0.85;
+    background: none; border: none; font-family: inherit;
+    flex-shrink: 0;
+}
+@media (max-width: 767px) { .note-back-btn { display: flex; } }
 
 /* ── Detail panel two-column layout ─────────────────────────────────────── */
 .detail-columns {
