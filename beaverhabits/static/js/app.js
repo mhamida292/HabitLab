@@ -1,4 +1,5 @@
 import { api, toast } from '/static/js/api.js';
+import { buildIconEl, applyIcons, isEmoji, ICON_NAMES } from '/static/js/icons.js';
 
 // ── Theme toggle ─────────────────────────────────────────────────
 function applyTheme(theme) {
@@ -169,7 +170,7 @@ export function openHabitModal(habit) {
     if (!ov) return;
     document.getElementById('habitModalTitle').textContent = habit ? 'Edit Habit' : 'New Habit';
     document.getElementById('habitNameIn').value = habit?.name || '';
-    document.getElementById('habitIconBtn').textContent = habit?.icon || '📌';
+    setIconBtn(habit?.icon || 'map-pin');
     document.getElementById('habitTagIn').value = habit?.tags?.[0] || '';
     document.getElementById('habitDeleteBtn').style.visibility = habit ? 'visible' : 'hidden';
 
@@ -238,7 +239,7 @@ window.saveHabit = async function() {
     const name = document.getElementById('habitNameIn').value.trim();
     if (!name) { toast('Name is required', 'error'); return; }
 
-    const icon = document.getElementById('habitIconBtn').textContent;
+    const icon = document.getElementById('habitIconBtn').dataset.iconValue || 'map-pin';
     const tag = document.getElementById('habitTagIn').value.trim();
     const hasSubgoals = document.getElementById('habitSubgoalToggle').checked;
 
@@ -289,37 +290,33 @@ window.deleteCurrentHabit = async function() {
     } catch (e) { toast(e.message, 'error'); }
 };
 
-// Icon picker — fixed-position popup appended to <body>
-const ICON_EMOJIS = [
-    // Movement
-    '🏃','🚶','🧘','🏋️','🚴','🏊','🤸','🧗',
-    // Health
-    '💧','🥗','🍎','💊','😴','🛌','🥦','🫁',
-    // Mind & learning
-    '📖','✍️','🧠','📚','🎨','🎵','🎯','📝',
-    // Daily life
-    '🏠','💰','🧹','☕','🍵','🙏','❤️','📌',
-    // Nature & time
-    '🌱','⭐','🌅','🌙','☀️','🔥','⏰','⚡',
-    // Work & study
-    '💻','📊','🗓️','💡','🎓','✅','📋','🔑',
-];
+// ── Icon button helpers ────────────────────────────────────────
+function setIconBtn(value) {
+    const btn = document.getElementById('habitIconBtn');
+    if (!btn) return;
+    btn.dataset.iconValue = value || 'map-pin';
+    btn.innerHTML = '';
+    const el = buildIconEl(value || 'map-pin', 22);
+    // Give lucide icons the right colour
+    if (!isEmoji(value)) el.style.color = 'var(--text-secondary)';
+    btn.appendChild(el);
+    applyIcons();
+}
 
+// ── Icon picker — fixed-position popup appended to <body> ──────
 let _iconPickerEl = null;
 
 function _getOrCreateIconPicker() {
     if (_iconPickerEl) return _iconPickerEl;
     const div = document.createElement('div');
-    div.id = 'iconPickerPopup';
     div.style.cssText = `
         display:none; position:fixed; z-index:9999;
         background:var(--bg-surface); border:1px solid var(--border);
         border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.35);
-        padding:8px; width:244px;
+        padding:10px;
     `;
     const grid = document.createElement('div');
-    grid.id = 'iconPickerGrid';
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(8,1fr);gap:2px';
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(8,1fr);gap:4px;width:272px';
     div.appendChild(grid);
     document.body.appendChild(div);
     _iconPickerEl = div;
@@ -329,34 +326,47 @@ function _getOrCreateIconPicker() {
 window.openIconPicker = function(e) {
     e.stopPropagation();
     const popup = _getOrCreateIconPicker();
-    const grid  = popup.querySelector('#iconPickerGrid');
+    const grid  = popup.firstElementChild;
 
-    // Toggle off
     if (popup.style.display !== 'none') { popup.style.display = 'none'; return; }
 
-    const current = document.getElementById('habitIconBtn').textContent.trim();
+    const current = document.getElementById('habitIconBtn').dataset.iconValue || 'map-pin';
     grid.innerHTML = '';
-    ICON_EMOJIS.forEach(em => {
+
+    ICON_NAMES.forEach(name => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.textContent = em;
-        const isCurrent = em === current;
-        btn.style.cssText = `font-size:17px;padding:5px 2px;border:none;border-radius:6px;cursor:pointer;background:${isCurrent ? 'var(--accent)' : 'transparent'};line-height:1;opacity:0.85;`;
-        btn.addEventListener('mouseenter', () => { if (!isCurrent) btn.style.background = 'var(--bg-elevated)'; });
-        btn.addEventListener('mouseleave', () => { if (!isCurrent) btn.style.background = 'transparent'; });
-        btn.addEventListener('click', (ev) => {
+        const isCurrent = name === current;
+        btn.style.cssText = `
+            width:30px;height:30px;border:none;border-radius:6px;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            color:var(--text-secondary);
+            background:${isCurrent ? 'var(--accent)' : 'transparent'};
+        `;
+        if (isCurrent) btn.style.color = '#fff';
+        const icon = buildIconEl(name, 16);
+        btn.appendChild(icon);
+        btn.addEventListener('mouseenter', () => {
+            if (!isCurrent) { btn.style.background = 'var(--bg-elevated)'; }
+        });
+        btn.addEventListener('mouseleave', () => {
+            if (!isCurrent) { btn.style.background = 'transparent'; }
+        });
+        btn.addEventListener('click', ev => {
             ev.stopPropagation();
-            document.getElementById('habitIconBtn').textContent = em;
+            setIconBtn(name);
             popup.style.display = 'none';
         });
         grid.appendChild(btn);
     });
 
-    // Position: anchor below the icon button, fixed to viewport
-    const rect = document.getElementById('habitIconBtn').getBoundingClientRect();
     popup.style.display = 'block';
-    const pw = popup.offsetWidth || 244;
-    const ph = popup.offsetHeight || 260;
+    applyIcons();
+
+    // Position anchored below icon button, fixed to viewport
+    const rect = document.getElementById('habitIconBtn').getBoundingClientRect();
+    const pw = popup.offsetWidth || 292;
+    const ph = popup.offsetHeight || 220;
     let left = rect.left;
     let top  = rect.bottom + 4;
     if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
@@ -364,7 +374,6 @@ window.openIconPicker = function(e) {
     popup.style.left = `${left}px`;
     popup.style.top  = `${top}px`;
 
-    // Close on outside click
     setTimeout(() => {
         document.addEventListener('click', function handler(ev) {
             if (!popup.contains(ev.target)) {

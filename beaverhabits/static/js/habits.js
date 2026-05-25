@@ -2,6 +2,7 @@
 import { api, toast } from '/static/js/api.js';
 import { mountCalendar, updateCalendarRecord } from '/static/js/monthly.js';
 import { openNoteEditor } from '/static/js/notes.js';
+import { buildIconEl, applyIcons } from '/static/js/icons.js';
 
 // ── State ─────────────────────────────────────────────────────
 let allHabits = [];
@@ -139,6 +140,8 @@ function renderHabitList() {
             container.appendChild(row);
         }
     }
+    // Hydrate any <i data-lucide="..."> icons injected above
+    applyIcons();
 }
 
 // ── Regular habit row ─────────────────────────────────────────
@@ -152,7 +155,8 @@ function buildRegularRow(h, activeIso) {
 
     const icon = document.createElement('div');
     icon.className = 'hrow-icon';
-    icon.textContent = h.icon || '📌';
+    icon.style.color = 'var(--text-secondary)';
+    icon.appendChild(buildIconEl(h.icon || 'map-pin', 18));
 
     const body = document.createElement('div');
     body.className = 'hrow-body';
@@ -163,10 +167,9 @@ function buildRegularRow(h, activeIso) {
 
     const meta = document.createElement('div');
     meta.className = 'hrow-meta';
-    // Streak badge
-    const streakText = `🔥 ${h._streak ?? '—'}`;
-    const daysText = `💧 ${h._total ?? '—'} days`;
-    meta.innerHTML = `<span>${daysText}</span><span>${streakText}</span>`;
+    const si = `<i data-lucide="droplet" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:2px"></i>`;
+    const fi = `<i data-lucide="flame" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:2px;color:var(--streak)"></i>`;
+    meta.innerHTML = `<span>${si}${h._total ?? '—'} days</span><span>${fi}${h._streak ?? '—'}</span>`;
 
     body.append(name, meta);
 
@@ -326,7 +329,11 @@ async function selectHabit(id) {
     const h = allHabits.find(x => x.id === id);
     if (!h) return;
 
-    document.getElementById('detailIcon').textContent = h.icon || '📌';
+    const detailIcon = document.getElementById('detailIcon');
+    detailIcon.innerHTML = '';
+    detailIcon.style.color = 'var(--text-secondary)';
+    detailIcon.appendChild(buildIconEl(h.icon || 'map-pin', 22));
+    applyIcons();
     document.getElementById('detailTitle').textContent = h.name;
 
     // Load stats
