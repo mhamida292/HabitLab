@@ -411,10 +411,8 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return self.data.setdefault("notes", [])
 
     def add_note(self, title: str, body: str = "", habit_id: str | None = None) -> dict:
-        import datetime
-        from beaverhabits.utils import generate_short_hash
         note = {
-            "id": generate_short_hash((title or "Untitled") + str(datetime.datetime.now())),
+            "id": generate_short_hash(title or "Untitled"),
             "title": title.strip() or "Untitled",
             "body": body,
             "habit_id": habit_id,
