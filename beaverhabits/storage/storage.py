@@ -222,6 +222,23 @@ class HabitList[H: Habit](Protocol):
 
     def delete_note(self, note_id: str) -> bool: ...
 
+    def get_tasks(self, date: str, carry: bool = False) -> list[dict]:
+        raise NotImplementedError
+
+    def add_task(self, date: str, text: str) -> dict:
+        raise NotImplementedError
+
+    def update_task(
+        self,
+        task_id: str,
+        done: bool | None = None,
+        text: str | None = None,
+    ) -> dict | None:
+        raise NotImplementedError
+
+    def delete_task(self, task_id: str) -> bool:
+        raise NotImplementedError
+
 
 class SessionStorage[L: HabitList](Protocol):
     def get_user_habit_list(self) -> Optional[L]: ...

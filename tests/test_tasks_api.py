@@ -185,3 +185,12 @@ async def test_delete_task(authed_client):
 async def test_delete_task_not_found(authed_client):
     resp = await authed_client.delete("/api/v1/tasks/nonexistent")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_create_task_empty_text_returns_422(authed_client):
+    resp = await authed_client.post(
+        "/api/v1/tasks",
+        json={"text": "", "date": "2026-05-26"},
+    )
+    assert resp.status_code == 422

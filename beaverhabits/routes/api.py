@@ -725,7 +725,7 @@ class UpdateTask(BaseModel):
 async def get_tasks_route(
     date: str,
     carry: bool = False,
-    habit_list: DictHabitList = Depends(current_habit_list),
+    habit_list: HabitList = Depends(current_habit_list),
 ):
     return habit_list.get_tasks(date, carry=carry)
 
