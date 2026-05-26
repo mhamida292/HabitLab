@@ -29,13 +29,14 @@ beaverhabits/
 ├── configs.py                  # Settings (env vars)
 ├── routes/
 │   ├── api.py                  # All /api/v1/* REST endpoints
-│   └── views.py                # Page routes (GET /, /notes, /heatmap, …)
+│   └── views.py                # Page routes (GET /, /today, /notes, /heatmap, …)
 ├── storage/
 │   ├── storage.py              # Abstract Habit / HabitList / HabitRecord interfaces
 │   └── dict.py                 # DictHabitList — JSON blob stored in SQLite
 ├── templates/
 │   ├── base.html               # Shell: nav rail, mobile tab bar, all overlays
 │   ├── index.html              # Habits page
+│   ├── today.html              # Today tab (two-column: list + stats panel)
 │   ├── notes.html              # Notes page
 │   ├── _settings_modal.html    # Theme picker, export/import, API token
 │   ├── _note_modal.html        # Quick note composer
@@ -46,6 +47,7 @@ beaverhabits/
     │   ├── api.js              # Thin fetch wrapper: api.get/post/put/delete/patch
     │   ├── app.js              # Settings modal, toast, global helpers
     │   ├── habits.js           # Habits page: list, detail panel, calendar wiring
+    │   ├── today.js            # Today tab: task list, habit pins, stats panel, swipe
     │   ├── monthly.js          # Monthly calendar component (mountCalendar)
     │   ├── notes.js            # Note editor modal
     │   ├── notes-page.js       # Notes page logic
@@ -80,13 +82,34 @@ All JS files are `type="module"`. The browser module cache is URL-keyed — `hab
 
 ### CSS Theming
 
-All colours are CSS custom properties defined per `[data-theme="…"]` block in `styles.css`. Available themes: `midnight` (default), `arctic`, `obsidian`, `violet`, `paper`, `sage`, `coffee`, `obsidian-light`. Use `var(--bg)`, `var(--surface)`, `var(--accent)`, `var(--text)`, `var(--border)`, etc. Never hardcode colour values in component CSS.
+All colours are CSS custom properties defined per `[data-theme="…"]` block in `styles.css`. Available themes: `midnight` (default), `arctic`, `obsidian`, `violet`, `paper`, `sage`, `coffee`, `obsidian-light`.
+
+**Correct token names:**
+
+| Token | Purpose |
+|---|---|
+| `var(--bg-primary)` | Page background (darkest) |
+| `var(--bg-surface)` | Card / panel surface |
+| `var(--bg-elevated)` | Hover states, raised elements |
+| `var(--bg-input)` | Input field backgrounds |
+| `var(--border)` | Borders and dividers |
+| `var(--accent)` | Primary accent colour |
+| `var(--accent-light)` | Lighter accent (text on dark bg) |
+| `var(--accent-sel)` | Selected-item background |
+| `var(--text-primary)` | Main body text |
+| `var(--text-secondary)` | Secondary / subdued text |
+| `var(--text-muted)` | Placeholder / disabled text |
+| `var(--streak)` | Streak flame colour |
+| `var(--danger)` | Destructive actions |
+| `var(--success)` | Positive / complete states |
+
+**Never** use `var(--bg)`, `var(--surface)`, `var(--text)` — these are **not defined** and will silently resolve to `transparent` / `inherit`.
 
 ### Date Handling — CRITICAL
 
 **Never use `new Date().toISOString().slice(0, 10)`** — `toISOString()` returns UTC. For users in UTC+ timezones this gives tomorrow's date when it's late evening local time, causing date-matching bugs (wrong calendar cell, sub-goals not ticking, 50% all-time rate for same-day completions).
 
-**Always use `localIso()`** (defined in `habits.js` and `monthly.js`):
+**Always use `localIso()`** (defined in `habits.js`, `monthly.js`, and `today.js`):
 
 ```js
 function localIso(d = new Date()) {
@@ -114,7 +137,41 @@ Do not render icon names as raw text. The pattern `habit.icon + ' ' + habit.name
 - `GET /habits` — full habit list with records
 - `GET /habits/{id}/stats?today=YYYY-MM-DD` — streak, totals, all-time %, monthly
 - `POST /habits/{id}/completions` — tick a date; optionally `sub_goal_id` to toggle a sub-goal
+- `PUT /habits/{id}` — update habit fields; use `{ status: "archive" }` to archive
+- `DELETE /habits/{id}` — permanently delete a habit
 - `PUT /habits/meta` with `{ order: [id, …] }` — persist drag-reorder
+
+### Today Tab (`today.js`)
+
+The Today tab (`/today`) is a two-column layout on desktop:
+
+- **Left column** (`.today-list-col`, 420px) — pinned habit rows + one-off task list + pin section. Supports day navigation (prev/next).
+- **Right column** (`.today-stats-col`, hidden on mobile) — stats panel: progress cards, habit streaks, weekly bar chart.
+
+Key module-level state in `today.js`:
+
+| Variable | Description |
+|---|---|
+| `TODAY` | Local ISO date string of the actual current date |
+| `viewDay` | ISO date of the currently-viewed day (may differ from TODAY when navigating) |
+| `allHabits` | Full habit array fetched from API |
+| `pinnedIds` | Array of habit IDs pinned to today (persisted in `localStorage`) |
+| `taskItems` | Array of `{id, text, done, carriedFrom?}` objects (persisted in `localStorage`) |
+
+Task rows support swipe-to-delete on touch devices (`@media (hover: none)`) and a hover ✕ button on desktop (`@media (hover: hover)`). Tasks are ephemeral — no confirmation on delete.
+
+### Habits Page — Swipe + Context Menu
+
+On **mobile (touch) devices**, habit rows are wrapped in `.hrow-wrap` with `.hrow-swipe-btns` revealed by swiping left:
+- Amber button → archive (`PUT /api/v1/habits/{id}` with `{ status: "archive" }`)
+- Red button → inline confirmation banner, then `DELETE /api/v1/habits/{id}`
+
+On **desktop (pointer) devices**, right-clicking a habit row opens a singleton `.ctx-menu` positioned at the cursor:
+- **Edit** — calls `openHabitModal(habit)` (same as "···" button)
+- **Archive** — same API as mobile
+- **Delete…** — `window.confirm()` then DELETE
+
+The context menu is a singleton appended to `<body>` by `initContextMenu()` on page load. It only initialises when `window.matchMedia('(hover: hover)').matches`. Capture `_ctxHabit` into a local `const` **before** calling `hideCtxMenu()` — `hideCtxMenu()` nulls `_ctxHabit`.
 
 ### Sub-Goals
 
@@ -136,6 +193,7 @@ A habit can have `sub_goals: [{id, name}, …]`. When toggling a sub-goal, POST 
 | `total` | Total fully-done days ever |
 | `all_time_rate` | For sub-goal habits: total individual goals done / (n_sub_goals × days_elapsed) × 100. For regular: done_days / days_elapsed × 100. Capped at 100%. |
 | `monthly_checkins` | Fully-done days this calendar month |
+| `total_completion` | Sum of `record.count` across all records |
 | `percent_7d / 30d / 90d` | Scoped % within that window |
 
 `effective_start` for all-time rate uses the earliest of `date_started` and the earliest record with any completion, so retroactive data doesn't inflate the rate.
@@ -148,8 +206,11 @@ A habit can have `sub_goals: [{id, name}, …]`. When toggling a sub-goal, POST 
 |---|---|
 | Sub-goals show unchecked despite being done | `toISOString()` used for date lookup → wrong date for UTC+ users |
 | All-time % is 50% on day 1 | Server UTC ahead of user's local date; fix: pass `?today=localIso()` |
-| Calendar shows ✓ on future dates | paintCalCircle doesn't guard `.future` cells — add early return |
+| Calendar shows ✓ on future dates | `paintCalCircle` doesn't guard `.future` cells — add early return |
 | Drag reorder lost on refresh | `saveHabitOrder()` must call `PUT /api/v1/habits/meta` with all IDs |
 | Module changes not picked up | Browser cached old JS — the no-cache middleware should handle it; hard-refresh with Ctrl+Shift+R to confirm |
 | Lucide icon name rendered as text | Used raw `habit.icon` string in innerHTML instead of `buildIconEl()` |
 | Stat cards stale after calendar toggle | `refreshDetailStats()` must be called from the `cal:toggled` event handler |
+| Swipe task/habit colours wrong | `var(--bg)` is undefined — use `var(--bg-primary)` or `var(--bg-surface)` |
+| Context menu archive/delete does nothing | `_ctxHabit` was read after `hideCtxMenu()` nulled it — capture `const habit = _ctxHabit` before calling `hideCtxMenu()` |
+| Today tab stats panel blank | `#todayStatsPanel` element missing from DOM, or `renderStatsPanel()` not called from `render()` |

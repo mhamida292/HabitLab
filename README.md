@@ -6,12 +6,15 @@ This is a fork of [daya0576/beaverhabits](https://github.com/daya0576/beaverhabi
 
 ## Features
 
+- **Today tab** — daily task list with pinned habits, day navigation, and a desktop stats panel (progress, streaks, weekly bar chart)
+- **Task management** — add one-off tasks for today; swipe left to delete on mobile, hover ✕ on desktop
 - Daily habit grid with check-in circles and streak badges
 - Sub-goals — break a habit into named steps (e.g. Salah prayers), track each individually
 - Monthly calendar view per habit with partial-progress rings
 - Yearly heatmap
 - Detail panel — trend chart, sub-goal checklist, recent notes, full stat cards
 - Drag-to-reorder habits within each category
+- **Archive / delete habits** — swipe left on mobile (amber archive + red delete buttons); right-click on desktop (context menu with Edit, Archive, Delete)
 - Notes — standalone note-taking with optional habit linking
 - Pomodoro focus timer — customisable durations, chime, browser notifications, persists across navigation
 - Stat cards — current streak, total check-ins, monthly check-ins, all-time completion %
@@ -81,7 +84,8 @@ Key endpoints:
 |---|---|---|
 | `GET` | `/api/v1/habits` | List all habits with records |
 | `POST` | `/api/v1/habits` | Create a habit |
-| `PUT` | `/api/v1/habits/{id}` | Update habit metadata / sub-goals |
+| `PUT` | `/api/v1/habits/{id}` | Update habit metadata / sub-goals; `{ status: "archive" }` to archive |
+| `DELETE` | `/api/v1/habits/{id}` | Permanently delete a habit |
 | `POST` | `/api/v1/habits/{id}/completions` | Tick a date (or toggle a sub-goal) |
 | `GET` | `/api/v1/habits/{id}/stats?today=YYYY-MM-DD` | Streak, totals, all-time % |
 | `PUT` | `/api/v1/habits/meta` | Persist drag-reorder `{ order: [id, …] }` |
