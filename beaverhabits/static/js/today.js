@@ -404,7 +404,7 @@ function attachSwipe(wrap, inner, delBtn, onDelete) {
             inner.style.transform = 'translateX(0)';
             isOpen = false;
         }
-    });
+    }, { passive: true });
 
     // Close on tap outside
     document.addEventListener('touchstart', e => {
