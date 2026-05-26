@@ -159,23 +159,19 @@ async function onCalCircleClick(cell, iso) {
     // Regular habit — step count
     const rec = recordsByDay.get(iso) || { count: 0, done: false, sub_goals_done: [] };
     const newCount = rec.count >= target ? 0 : rec.count + 1;
-    const prevRec = { ...rec };
-
-    const newRec = { count: newCount, done: newCount >= target, sub_goals_done: [] };
-    recordsByDay.set(iso, newRec);
-    paintCalCircle(cell, newRec, [], target);
 
     try {
-        await api.post(`/api/v1/habits/${habitId}/completions`, {
+        const result = await api.post(`/api/v1/habits/${habitId}/completions`, {
             count: newCount, date: iso, date_fmt: '%Y-%m-%d',
         });
+        const newRec = { count: result.count, done: result.done, sub_goals_done: result.sub_goals_done || [] };
+        recordsByDay.set(iso, newRec);
+        paintCalCircle(cell, newRec, [], target);
         calState.onToggle?.(iso);
         document.dispatchEvent(new CustomEvent('cal:toggled', {
-            detail: { habitId, iso, newRec, prevDone: prevRec.done },
+            detail: { habitId, iso, newRec, prevDone: rec.done },
         }));
     } catch (err) {
-        recordsByDay.set(iso, prevRec);
-        paintCalCircle(cell, prevRec, [], target);
         toast(err.message, 'error');
     }
 }
@@ -205,8 +201,9 @@ function openSubgoalPicker(cell, iso) {
         item.className = 'sg-popup-item' + (donSet.has(sg.id) ? ' checked' : '');
         item.innerHTML = `<div class="sg-check"></div><span>${sg.name}</span>`;
         item.addEventListener('click', async () => {
-            item.classList.toggle('checked');
             await toggleSubgoal(habitId, iso, sg.id, rec, recordsByDay, cell);
+            const freshRec = recordsByDay.get(iso);
+            item.classList.toggle('checked', freshRec?.sub_goals_done?.includes(sg.id) ?? false);
         });
         popup.appendChild(item);
     });
@@ -243,8 +240,9 @@ function openSgSheet(iso, dateLabel, subGoals, donSet, habitId, rec, recordsByDa
         item.style.cssText = 'padding:13px 16px';
         item.innerHTML = `<div class="sg-check"></div><span>${sg.name}</span>`;
         item.addEventListener('click', async () => {
-            item.classList.toggle('checked');
             await toggleSubgoal(habitId, iso, sg.id, rec, recordsByDay, cell);
+            const freshRec = recordsByDay.get(iso);
+            item.classList.toggle('checked', freshRec?.sub_goals_done?.includes(sg.id) ?? false);
         });
         container.appendChild(item);
     });
