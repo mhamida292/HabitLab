@@ -1,6 +1,6 @@
 // beaverhabits/static/js/today.js — Daily task list
 import { api } from '/static/js/api.js';
-import { isEmoji, applyIcons } from '/static/js/icons.js';
+import { buildIconEl, applyIcons } from '/static/js/icons.js';
 
 // ── Date helpers ─────────────────────────────────────────────
 function localIso(d = new Date()) {
@@ -177,16 +177,7 @@ function makeHabitRow(h, isPast) {
     // Build icon element
     const iconSpan = document.createElement('span');
     iconSpan.className = 'today-row-icon';
-    if (h.icon) {
-        if (isEmoji(h.icon)) {
-            iconSpan.textContent = h.icon;
-        } else {
-            const i = document.createElement('i');
-            i.dataset.lucide = h.icon;
-            i.style.cssText = 'width:15px;height:15px;display:block';
-            iconSpan.appendChild(i);
-        }
-    }
+    if (h.icon) iconSpan.appendChild(buildIconEl(h.icon, 15));
 
     row.innerHTML = `
         <span class="today-drag">⠿</span>
@@ -298,17 +289,8 @@ function makePinSection() {
 
         row.appendChild(box);
         const pinIcon = document.createElement('span');
-        pinIcon.style.cssText = 'font-size:15px;width:20px;text-align:center;flex-shrink:0;';
-        if (h.icon) {
-            if (isEmoji(h.icon)) {
-                pinIcon.textContent = h.icon;
-            } else {
-                const i = document.createElement('i');
-                i.dataset.lucide = h.icon;
-                i.style.cssText = 'width:15px;height:15px;display:block';
-                pinIcon.appendChild(i);
-            }
-        }
+        pinIcon.className = 'today-row-icon';
+        if (h.icon) pinIcon.appendChild(buildIconEl(h.icon, 15));
         row.appendChild(pinIcon);
         row.appendChild(name);
         row.addEventListener('click', () => {
