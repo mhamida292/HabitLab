@@ -1201,6 +1201,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
     padding: 8px 14px; background: #7f1d1d;
     font-size: 12px; color: #fca5a5;
     border-radius: 0 0 var(--radius, 10px) var(--radius, 10px);
+    position: relative; z-index: 2;
 }
 .hrow-delete-confirm button {
     padding: 4px 10px; border-radius: 5px; border: none; cursor: pointer;
