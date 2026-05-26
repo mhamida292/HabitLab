@@ -61,11 +61,9 @@ async def test_stats_includes_monthly_metrics(authed_client, habit):
     assert resp.status_code == 200
     body = resp.json()
     assert "monthly_checkins" in body
-    assert "monthly_checkin_rate" in body
-    assert "monthly_completion" in body
     assert "total_completion" in body
+    assert "all_time_rate" in body
     # All zero for a fresh habit
     assert body["monthly_checkins"] == 0
-    assert body["monthly_completion"] == 0
     assert body["total_completion"] == 0
-    assert 0.0 <= body["monthly_checkin_rate"] <= 100.0
+    assert 0.0 <= body["all_time_rate"] <= 100.0
