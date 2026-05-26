@@ -104,3 +104,84 @@ def test_delete_task_removes_it(hl):
 
 def test_delete_task_returns_false_for_unknown_id(hl):
     assert hl.delete_task("nonexistent") is False
+
+
+# ── API integration tests ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_list_tasks_empty(authed_client):
+    resp = await authed_client.get("/api/v1/tasks?date=2026-05-26")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+@pytest.mark.asyncio
+async def test_create_task(authed_client):
+    resp = await authed_client.post(
+        "/api/v1/tasks",
+        json={"text": "Buy groceries", "date": "2026-05-26"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["text"] == "Buy groceries"
+    assert data["done"] is False
+    assert data["date"] == "2026-05-26"
+    assert "id" in data
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_filters_by_date(authed_client):
+    await authed_client.post("/api/v1/tasks", json={"text": "Today", "date": "2026-05-26"})
+    await authed_client.post("/api/v1/tasks", json={"text": "Yesterday", "date": "2026-05-25"})
+    resp = await authed_client.get("/api/v1/tasks?date=2026-05-26")
+    assert resp.status_code == 200
+    tasks = resp.json()
+    assert len(tasks) == 1
+    assert tasks[0]["text"] == "Today"
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_carry_forward(authed_client):
+    # Create an undone task for yesterday
+    await authed_client.post("/api/v1/tasks", json={"text": "Undone", "date": "2026-05-25"})
+    resp = await authed_client.get("/api/v1/tasks?date=2026-05-26&carry=true")
+    assert resp.status_code == 200
+    tasks = resp.json()
+    assert len(tasks) == 1
+    assert tasks[0]["carriedFrom"] == "2026-05-25"
+
+
+@pytest.mark.asyncio
+async def test_patch_task_done(authed_client):
+    create = await authed_client.post(
+        "/api/v1/tasks", json={"text": "Do it", "date": "2026-05-26"}
+    )
+    task_id = create.json()["id"]
+    resp = await authed_client.patch(f"/api/v1/tasks/{task_id}", json={"done": True})
+    assert resp.status_code == 200
+    assert resp.json()["done"] is True
+
+
+@pytest.mark.asyncio
+async def test_patch_task_not_found(authed_client):
+    resp = await authed_client.patch("/api/v1/tasks/nonexistent", json={"done": True})
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_task(authed_client):
+    create = await authed_client.post(
+        "/api/v1/tasks", json={"text": "Delete me", "date": "2026-05-26"}
+    )
+    task_id = create.json()["id"]
+    resp = await authed_client.delete(f"/api/v1/tasks/{task_id}")
+    assert resp.status_code == 200
+    # Confirm gone
+    list_resp = await authed_client.get("/api/v1/tasks?date=2026-05-26")
+    assert all(t["id"] != task_id for t in list_resp.json())
+
+
+@pytest.mark.asyncio
+async def test_delete_task_not_found(authed_client):
+    resp = await authed_client.delete("/api/v1/tasks/nonexistent")
+    assert resp.status_code == 404

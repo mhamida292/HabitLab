@@ -709,5 +709,70 @@ async def delete_note_route(
     return {"ok": True}
 
 
+# ── Tasks ─────────────────────────────────────────────────────────────────────
+
+class CreateTask(BaseModel):
+    text: str
+    date: str  # YYYY-MM-DD
+
+
+class UpdateTask(BaseModel):
+    done: bool | None = None
+    text: str | None = None
+
+
+@api_router.get("/tasks", tags=["tasks"])
+async def get_tasks_route(
+    date: str,
+    carry: bool = False,
+    habit_list: DictHabitList = Depends(current_habit_list),
+):
+    return habit_list.get_tasks(date, carry=carry)
+
+
+@api_router.post("/tasks", tags=["tasks"])
+async def post_task(
+    task: CreateTask,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    try:
+        created = habit_list.add_task(task.date, task.text)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    await _storage.save_user_habit_list(user, habit_list)
+    return created
+
+
+@api_router.patch("/tasks/{task_id}", tags=["tasks"])
+async def patch_task(
+    task_id: str,
+    task: UpdateTask,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    try:
+        updated = habit_list.update_task(task_id, done=task.done, text=task.text)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await _storage.save_user_habit_list(user, habit_list)
+    return updated
+
+
+@api_router.delete("/tasks/{task_id}", tags=["tasks"])
+async def delete_task_route(
+    task_id: str,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    deleted = habit_list.delete_task(task_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await _storage.save_user_habit_list(user, habit_list)
+    return {"ok": True}
+
+
 def init_api_routes(app: FastAPI) -> None:
     app.include_router(api_router, prefix="/api/v1")
