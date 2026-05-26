@@ -892,8 +892,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
     display: flex; flex-direction: column;
 }
 .today-inner {
-    max-width: 560px; width: 100%;
-    margin: 0 auto;
+    width: 100%;
 }
 .today-nav-row {
     display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
