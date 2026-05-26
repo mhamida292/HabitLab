@@ -222,22 +222,6 @@ class HabitList[H: Habit](Protocol):
 
     def delete_note(self, note_id: str) -> bool: ...
 
-    def get_tasks(self, date: str, carry: bool = False) -> list[dict]:
-        ...
-
-    def add_task(self, date: str, text: str) -> dict:
-        ...
-
-    def update_task(
-        self,
-        task_id: str,
-        done: bool | None = None,
-        text: str | None = None,
-    ) -> dict | None:
-        ...
-
-    def delete_task(self, task_id: str) -> bool:
-        ...
 
 
 class SessionStorage[L: HabitList](Protocol):
