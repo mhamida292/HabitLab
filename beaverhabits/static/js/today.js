@@ -108,6 +108,7 @@ function render() {
     document.getElementById('todayNextBtn').disabled = viewDay >= TODAY;
 
     recalcProgress();
+    renderStatsPanel();
 
     const list = document.getElementById('todayList');
     list.innerHTML = '';
@@ -352,6 +353,151 @@ function initSortable() {
 // ── Utils ─────────────────────────────────────────────────────
 function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Stats panel ───────────────────────────────────────────────
+function computeStreak(habit) {
+    const doneSet = new Set(
+        (habit.records || [])
+            .filter(r => {
+                if ((habit.sub_goals || []).length > 0) {
+                    return (r.sub_goals_done?.length || 0) >= habit.sub_goals.length;
+                }
+                return r.done;
+            })
+            .map(r => r.day)
+    );
+    let streak = 0;
+    const d = new Date();
+    for (let i = 0; i < 365; i++) {
+        const iso = localIso(d);
+        if (!doneSet.has(iso)) break;
+        streak++;
+        d.setDate(d.getDate() - 1);
+    }
+    return streak;
+}
+
+function computeWeekBars(pinnedHabits) {
+    // Returns array of 7 {iso, label, pct, isToday} objects covering the last 7 days ending on TODAY
+    const bars = [];
+    for (let i = 6; i >= 0; i--) {
+        const iso = isoAddDays(TODAY, -i);
+        const d = new Date(iso + 'T00:00:00');
+        const label = ['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()];
+        let done = 0;
+        for (const h of pinnedHabits) {
+            if (habitDone(h, iso)) done++;
+        }
+        const pct = pinnedHabits.length > 0 ? done / pinnedHabits.length : 0;
+        bars.push({ iso, label, pct, isToday: iso === TODAY });
+    }
+    return bars;
+}
+
+function renderStatsPanel() {
+    const panel = document.getElementById('todayStatsPanel');
+    if (!panel) return;
+    panel.innerHTML = '';
+
+    const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
+    let habitsDone = 0, habitsTotal = 0, tasksDone = 0, tasksTotal = 0;
+    for (const h of pinned) { habitsTotal++; if (habitDone(h, viewDay)) habitsDone++; }
+    for (const t of taskItems) { tasksTotal++; if (t.done) tasksDone++; }
+    const done = habitsDone + tasksDone;
+    const total = habitsTotal + tasksTotal;
+    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+
+    // ── Progress cards ──
+    const progSection = document.createElement('div');
+    progSection.className = 'stats-panel-section';
+    progSection.innerHTML = `
+        <div class="stats-panel-label">Today's progress</div>
+        <div class="stats-prog-cards">
+            <div class="stats-prog-card">
+                <div class="stats-prog-val">${done}</div>
+                <div class="stats-prog-lbl">Done</div>
+            </div>
+            <div class="stats-prog-card">
+                <div class="stats-prog-val">${total - done}</div>
+                <div class="stats-prog-lbl">Left</div>
+            </div>
+            <div class="stats-prog-card">
+                <div class="stats-prog-val">${pct}%</div>
+                <div class="stats-prog-lbl">Complete</div>
+            </div>
+        </div>
+    `;
+    panel.appendChild(progSection);
+
+    // ── Habit streaks ──
+    if (pinned.length > 0) {
+        const streakSection = document.createElement('div');
+        streakSection.className = 'stats-panel-section';
+        const label = document.createElement('div');
+        label.className = 'stats-panel-label';
+        label.textContent = 'Habit streaks';
+        streakSection.appendChild(label);
+
+        for (const h of pinned) {
+            const streak = computeStreak(h);
+            const row = document.createElement('div');
+            row.className = 'stats-streak-row';
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'stats-streak-icon';
+            if (h.icon) iconSpan.appendChild(buildIconEl(h.icon, 14));
+            row.appendChild(iconSpan);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'stats-streak-name';
+            nameSpan.textContent = h.name;
+            row.appendChild(nameSpan);
+
+            const valSpan = document.createElement('span');
+            valSpan.className = 'stats-streak-val';
+            valSpan.textContent = streak > 0 ? '🔥 ' + streak : '— 0';
+            row.appendChild(valSpan);
+
+            streakSection.appendChild(row);
+        }
+        panel.appendChild(streakSection);
+    }
+
+    // ── Weekly chart ──
+    const weekSection = document.createElement('div');
+    weekSection.className = 'stats-panel-section';
+    const weekLabel = document.createElement('div');
+    weekLabel.className = 'stats-panel-label';
+    weekLabel.textContent = 'This week';
+    weekSection.appendChild(weekLabel);
+
+    const bars = computeWeekBars(pinned);
+    const maxPct = Math.max(...bars.map(b => b.pct), 0.01);
+
+    const barsEl = document.createElement('div');
+    barsEl.className = 'stats-week-bars';
+    const labelsEl = document.createElement('div');
+    labelsEl.className = 'stats-week-labels';
+
+    for (const bar of bars) {
+        const b = document.createElement('div');
+        b.className = 'stats-week-bar' + (bar.isToday ? ' today-bar' : '');
+        b.style.height = Math.max(bar.pct / maxPct * 100, bar.pct > 0 ? 8 : 3) + '%';
+        b.title = Math.round(bar.pct * 100) + '%';
+        barsEl.appendChild(b);
+
+        const l = document.createElement('div');
+        l.className = 'stats-week-lbl' + (bar.isToday ? ' today-lbl' : '');
+        l.textContent = bar.label;
+        labelsEl.appendChild(l);
+    }
+
+    weekSection.appendChild(barsEl);
+    weekSection.appendChild(labelsEl);
+    panel.appendChild(weekSection);
+
+    applyIcons();
 }
 
 // ── Init ──────────────────────────────────────────────────────
