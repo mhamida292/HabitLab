@@ -1208,3 +1208,23 @@ textarea.finp { resize: vertical; min-height: 80px; }
 }
 .hrow-confirm-yes { background: #ef4444; color: white; }
 .hrow-confirm-no  { background: #3f3f46; color: #d4d4d8; }
+
+/* ── Right-click context menu ────────────────────────────────── */
+.ctx-menu {
+    position: fixed; z-index: 9999;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 5px 0; min-width: 160px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    display: none;
+}
+.ctx-menu.open { display: block; }
+.ctx-menu-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 14px; font-size: 12px; cursor: pointer;
+    transition: background .1s; border-radius: 6px; margin: 1px 3px;
+    color: var(--text-primary);
+}
+.ctx-menu-item:hover { background: var(--bg-elevated); }
+.ctx-menu-item.danger { color: #ef4444; }
+.ctx-menu-item.warn   { color: #f59e0b; }
+.ctx-menu-sep { height: 1px; background: var(--border); margin: 3px 0; }
