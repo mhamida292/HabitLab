@@ -54,3 +54,40 @@ Both `onToggle` callback and `cal:toggled` event dispatch were already correctly
 
 - `beaverhabits/static/js/monthly.js` — `onCalCircleClick`, `toggleSubgoal`
 - `beaverhabits/static/js/habits.js` — `cal:toggled` event listener, `refreshDetailStats`
+
+---
+
+## BUG-002 — Timezone mismatch causes wrong all-time % and sub-goals not ticking
+
+**Status:** Fixed — 2026-05-25  
+**Reported:** 2026-05-25  
+**Severity:** High — incorrect stats and broken UI for all users in UTC+ timezones  
+
+### Symptoms
+
+1. A habit started today and completed today shows **50% all-time %** instead of 100%.
+2. Sub-goal check-boxes in the detail panel show as **unchecked** even after ticking them (e.g. Fajr + Dhuhr done for Salah, panel shows all empty).
+
+### Root cause
+
+Every date comparison in the JS used `new Date().toISOString().slice(0, 10)` or `new Date(y, m, d).toISOString().slice(0, 10)`. `toISOString()` converts to UTC before formatting. For a user in UTC+1 at 11 pm local time, `toISOString()` returns the next calendar day.
+
+**Symptom 1 (50%):** The stats endpoint used `datetime.date.today()` server-side — also UTC. Client is in UTC+1 at 11 pm; server thinks it's tomorrow. `days_since_start = (tomorrow − today).days + 1 = 2`. One completion / 2 days = 50%.
+
+**Symptom 2 (sub-goals unchecked):** `renderSubGoalsSection` looked up today's record with `new Date().toISOString().slice(0, 10)` — UTC, which is tomorrow's date. The record is stored under today's local date. No match → `sub_goals_done` empty → all boxes unchecked.
+
+Same root cause appeared in:
+- `habits.js`: `isoToday()`, `isoNDaysAgo()`, `renderSubGoalsSection`, `computeWeeklyTrend`, monthly-stat optimistic update, today-check in `cal:toggled` handler
+- `monthly.js`: calendar cell ISO generation, monthly trend chart
+
+### Fix applied
+
+**`habits.js` and `monthly.js`:** Added a `localIso(d = new Date())` helper that reads `getFullYear() / getMonth() / getDate()` (local-clock values) and formats as `YYYY-MM-DD`. Replaced every `toISOString().slice(0, 10)` call with `localIso()`.
+
+**`routes/api.py`:** `GET /habits/{id}/stats` now accepts an optional `?today=YYYY-MM-DD` query parameter. When provided, the server uses the client's local date for all calculations (effective start, streak cursor, monthly window). Falls back to `datetime.date.today()` only when the param is absent. All three stats fetch calls in `habits.js` pass `?today=${localIso()}`.
+
+### Files involved
+
+- `beaverhabits/static/js/habits.js` — `localIso()`, `isoToday()`, `isoNDaysAgo()`, `renderSubGoalsSection`, `computeWeeklyTrend`, `refreshDetailStats`, `selectHabit`, `refreshHabits`
+- `beaverhabits/static/js/monthly.js` — `localIso()`, calendar cell loop, monthly trend chart loop
+- `beaverhabits/routes/api.py` — `get_habit_stats`, added `today` query param
