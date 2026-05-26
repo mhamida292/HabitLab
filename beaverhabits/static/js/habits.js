@@ -241,6 +241,30 @@ function buildRegularRow(h, activeIso) {
 
     row.append(handle, icon, body, toggle);
     row.addEventListener('click', () => selectHabit(h.id));
+
+    // Mobile swipe wrap
+    if (window.matchMedia('(hover: none)').matches) {
+        const wrap = document.createElement('div');
+        wrap.className = 'hrow-wrap';
+        row.classList.add('hrow-swipe-inner');
+
+        const swipeBtns = document.createElement('div');
+        swipeBtns.className = 'hrow-swipe-btns';
+
+        const archBtn = document.createElement('div');
+        archBtn.className = 'hrow-swipe-btn archive';
+        archBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'hrow-swipe-btn delete';
+        delBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+        swipeBtns.append(archBtn, delBtn);
+        wrap.append(swipeBtns, row);
+        attachHabitSwipe(wrap, row, archBtn, delBtn, h);
+        return wrap;
+    }
+
     return row;
 }
 
@@ -335,7 +359,121 @@ function buildSubgoalRow(h, activeIso) {
         if (e.target.closest('.sg-pill')) return;
         selectHabit(h.id);
     });
+
+    // Mobile swipe wrap
+    if (window.matchMedia('(hover: none)').matches) {
+        const wrap = document.createElement('div');
+        wrap.className = 'hrow-wrap';
+        row.classList.add('hrow-swipe-inner');
+
+        const swipeBtns = document.createElement('div');
+        swipeBtns.className = 'hrow-swipe-btns';
+
+        const archBtn = document.createElement('div');
+        archBtn.className = 'hrow-swipe-btn archive';
+        archBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'hrow-swipe-btn delete';
+        delBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+        swipeBtns.append(archBtn, delBtn);
+        wrap.append(swipeBtns, row);
+        attachHabitSwipe(wrap, row, archBtn, delBtn, h);
+        return wrap;
+    }
+
     return row;
+}
+
+// ── Mobile swipe: archive / delete ────────────────────────────
+function attachHabitSwipe(wrap, inner, archBtn, delBtn, habit) {
+    const OPEN_W = 120, SNAP_AT = 48;
+    let startX = 0, offsetX = 0, isOpen = false, dragging = false;
+
+    inner.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+        offsetX = isOpen ? -OPEN_W : 0;
+        dragging = false;
+        inner.classList.remove('swipe-snap');
+    }, { passive: true });
+
+    inner.addEventListener('touchmove', e => {
+        const dx = e.touches[0].clientX - startX;
+        if (!dragging && Math.abs(dx) < 5) return;
+        dragging = true;
+        const next = Math.min(0, Math.max(-OPEN_W, offsetX + dx));
+        inner.style.transform = `translateX(${next}px)`;
+    }, { passive: true });
+
+    inner.addEventListener('touchend', e => {
+        if (!dragging) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        inner.classList.add('swipe-snap');
+        if (!isOpen && dx < -SNAP_AT) {
+            inner.style.transform = `translateX(${-OPEN_W}px)`;
+            isOpen = true;
+        } else {
+            inner.style.transform = 'translateX(0)';
+            isOpen = false;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchstart', e => {
+        if (isOpen && !wrap.contains(e.target)) {
+            inner.classList.add('swipe-snap');
+            inner.style.transform = 'translateX(0)';
+            isOpen = false;
+        }
+    }, { passive: true });
+
+    function closeSwipe() {
+        inner.classList.add('swipe-snap');
+        inner.style.transform = 'translateX(0)';
+        isOpen = false;
+    }
+
+    archBtn.addEventListener('click', async () => {
+        closeSwipe();
+        try {
+            await api.put(`/api/v1/habits/${habit.id}`, { status: 'archive' });
+            allHabits = allHabits.filter(h => h.id !== habit.id);
+            renderHabitList();
+            toast('Habit archived');
+        } catch (err) {
+            toast(err.message || 'Failed to archive', 'error');
+        }
+    });
+
+    delBtn.addEventListener('click', () => {
+        closeSwipe();
+        // Show inline confirmation banner below the row
+        const confirm = document.createElement('div');
+        confirm.className = 'hrow-delete-confirm';
+        confirm.innerHTML = `
+            <span style="flex:1">Delete "${escapeHtml(habit.name)}" permanently?</span>
+            <button class="hrow-confirm-yes">Delete</button>
+            <button class="hrow-confirm-no">Cancel</button>
+        `;
+        wrap.appendChild(confirm);
+
+        confirm.querySelector('.hrow-confirm-yes').addEventListener('click', async () => {
+            try {
+                await api.delete(`/api/v1/habits/${habit.id}`);
+                allHabits = allHabits.filter(h => h.id !== habit.id);
+                renderHabitList();
+                toast('Habit deleted');
+            } catch (err) {
+                toast(err.message || 'Failed to delete', 'error');
+                confirm.remove();
+            }
+        });
+        confirm.querySelector('.hrow-confirm-no').addEventListener('click', () => confirm.remove());
+    });
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 /**
