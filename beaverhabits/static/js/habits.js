@@ -193,7 +193,7 @@ function buildRegularRow(h, activeIso) {
 
     const meta = document.createElement('div');
     meta.className = 'hrow-meta';
-    const si = `<i data-lucide="droplet" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:2px"></i>`;
+    const si = `<i data-lucide="check-circle-2" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:2px"></i>`;
     const fi = `<i data-lucide="flame" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:2px;color:var(--streak)"></i>`;
     meta.innerHTML = `<span>${si}${h._total ?? '—'} days</span><span>${fi}${h._streak ?? '—'}</span>`;
 
@@ -281,7 +281,7 @@ function buildSubgoalRow(h, activeIso) {
     const meta = document.createElement('div');
     meta.className = 'hrow-meta';
     const unit = h.sub_goal_unit || 'items';
-    meta.innerHTML = `<span>💧 ${h._total ?? '—'} days</span><span>${doneCount}/${total} ${unit}</span>`;
+    meta.innerHTML = `<span><i data-lucide="check-circle-2" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:2px"></i>${h._total ?? '—'} days</span><span>${doneCount}/${total} ${unit}</span>`;
 
     const pills = document.createElement('div');
     pills.className = 'subgoal-pills';

@@ -67,10 +67,32 @@ function skipPhase() {
     updateNavPill();
 }
 
+function playChime() {
+    try {
+        const ctx = new AudioContext();
+        // C5 → E5 → G5 arpeggio — pleasant bell chime
+        [523.25, 659.25, 783.99].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            const t = ctx.currentTime + i * 0.18;
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.22, t + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+            osc.start(t);
+            osc.stop(t + 1.4);
+        });
+    } catch (e) { /* AudioContext blocked — silently skip */ }
+}
+
 function onTimerEnd() {
     state.running = false;
     clearInterval(_interval);
     const label = state.mode === 'work' ? 'Work session done! Time for a break.' : 'Break over — back to work!';
+    playChime();
     // Browser notification
     if (Notification.permission === 'granted') {
         new Notification('HabitLab Timer', { body: label, icon: '/static/logo-mark.svg' });
