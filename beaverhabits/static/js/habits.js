@@ -83,6 +83,17 @@ function updateActiveDayChip() {
     }
 }
 
+// ── Habit order persistence ───────────────────────────────────
+async function saveHabitOrder() {
+    const ids = [...document.querySelectorAll('.hrow[data-habit-id]')]
+        .map(el => el.dataset.habitId);
+    try {
+        await api.put('/api/v1/habits/meta', { order: ids });
+    } catch (e) {
+        toast('Could not save order', 'error');
+    }
+}
+
 // ── Habit list rendering ──────────────────────────────────────
 function groupByFirstTag(habits) {
     const groups = new Map(); // tag → [habit]
@@ -133,11 +144,26 @@ function renderHabitList() {
 
         if (collapsedGroups.has(tag)) continue;
 
+        // Sortable group wrapper — drag only within this category
+        const groupEl = document.createElement('div');
+        groupEl.className = 'habit-group';
+        groupEl.dataset.tag = tag;
+
         for (const h of habits) {
             const row = h.sub_goals?.length > 0
                 ? buildSubgoalRow(h, activeIso)
                 : buildRegularRow(h, activeIso);
-            container.appendChild(row);
+            groupEl.appendChild(row);
+        }
+        container.appendChild(groupEl);
+
+        if (window.Sortable) {
+            new Sortable(groupEl, {
+                animation: 150,
+                handle: '.hrow-drag-handle',
+                ghostClass: 'hrow-ghost',
+                onEnd: saveHabitOrder,
+            });
         }
     }
     // Hydrate any <i data-lucide="..."> icons injected above
@@ -208,7 +234,11 @@ function buildRegularRow(h, activeIso) {
         }
     });
 
-    row.append(icon, body, toggle);
+    const handle = document.createElement('div');
+    handle.className = 'hrow-drag-handle';
+    handle.innerHTML = '⠿';
+
+    row.append(handle, icon, body, toggle);
     row.addEventListener('click', () => selectHabit(h.id));
     return row;
 }
@@ -293,7 +323,12 @@ function buildSubgoalRow(h, activeIso) {
     }
 
     body.append(name, meta, pills);
-    row.append(icon, body);
+
+    const handle = document.createElement('div');
+    handle.className = 'hrow-drag-handle';
+    handle.innerHTML = '⠿';
+
+    row.append(handle, icon, body);
     row.addEventListener('click', (e) => {
         if (e.target.closest('.sg-pill')) return;
         selectHabit(h.id);
