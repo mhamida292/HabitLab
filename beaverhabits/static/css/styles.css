@@ -851,11 +851,12 @@ textarea.finp { resize: vertical; min-height: 80px; }
     .list-topbar-title { font-size: 17px; }
 
     /* Habit rows */
-    .hrow { padding: 14px 16px; gap: 12px; }
+    .hrow { padding: 11px 10px; gap: 8px; }
+    .hrow-drag-handle { display: none; }
     .hrow-name { font-size: 15px; }
     .hrow-meta { font-size: 13px; }
-    .hrow-icon { width: 36px; height: 36px; border-radius: 9px; }
-    .hrow-icon svg { width: 18px; height: 18px; }
+    .hrow-icon { width: 34px; height: 34px; border-radius: 8px; }
+    .hrow-icon svg { width: 17px; height: 17px; }
 
     /* Calendar pills / sub-goal pills */
     .sg-pill { padding: 5px 12px; font-size: 13px; }
