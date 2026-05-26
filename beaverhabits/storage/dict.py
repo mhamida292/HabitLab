@@ -439,16 +439,16 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         if not carry:
             return date_tasks
 
-        seen_ids = {t["id"] for t in date_tasks}
+        seen_ids = {t["id"] for t in date_tasks if "id" in t}
         carried = []
         date_obj = datetime.date.fromisoformat(date)
-        for i in range(1, 8):
+        for i in range(1, 15):
             past = (date_obj - datetime.timedelta(days=i)).isoformat()
             for t in all_tasks:
                 if (
                     t.get("date") == past
                     and not t.get("done", False)
-                    and t["id"] not in seen_ids
+                    and t.get("id") not in seen_ids
                 ):
                     carried.append({**t, "carriedFrom": past})
                     seen_ids.add(t["id"])
@@ -456,9 +456,12 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return carried + date_tasks
 
     def add_task(self, date: str, text: str) -> dict:
+        text = text.strip()
+        if not text:
+            raise ValueError("Task text cannot be empty")
         task = {
             "id": uuid.uuid4().hex[:8],
-            "text": text.strip(),
+            "text": text,
             "done": False,
             "date": date,
         }
@@ -478,7 +481,10 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         if done is not None:
             task["done"] = done
         if text is not None:
-            task["text"] = text.strip()
+            text = text.strip()
+            if not text:
+                raise ValueError("Task text cannot be empty")
+            task["text"] = text
         return task
 
     def delete_task(self, task_id: str) -> bool:

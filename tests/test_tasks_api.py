@@ -26,6 +26,16 @@ def test_add_task_strips_whitespace(hl):
     assert task["text"] == "Hello"
 
 
+def test_add_task_rejects_empty_text(hl):
+    with pytest.raises(ValueError, match="cannot be empty"):
+        hl.add_task("2026-05-26", "")
+
+
+def test_add_task_rejects_whitespace_only_text(hl):
+    with pytest.raises(ValueError, match="cannot be empty"):
+        hl.add_task("2026-05-26", "   ")
+
+
 def test_add_task_persisted_in_data(hl):
     hl.add_task("2026-05-26", "Task A")
     assert len(hl.get_tasks("2026-05-26")) == 1
@@ -53,12 +63,14 @@ def test_get_tasks_carry_forward_skips_done(hl):
 
 
 def test_get_tasks_carry_forward_deduplicates(hl):
-    # Task exists in both yesterday and today's list (already carried manually)
-    hl.add_task("2026-05-25", "Undone")
-    hl.add_task("2026-05-26", "Today fresh")
+    # Same task id appears on two different past days — should only appear once
+    task = hl.add_task("2026-05-24", "Two days ago")
+    # Manually plant the same id on the previous day to simulate duplication
+    hl.data["tasks"].append({**task, "date": "2026-05-25"})
     tasks = hl.get_tasks("2026-05-26", carry=True)
-    # 1 carried + 1 today = 2 total
-    assert len(tasks) == 2
+    task_ids = [t["id"] for t in tasks]
+    assert len(task_ids) == len(set(task_ids)), "Duplicate task ids found in carry-forward"
+    assert len(tasks) == 1
 
 
 def test_get_tasks_no_carry_without_flag(hl):
