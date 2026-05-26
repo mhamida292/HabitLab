@@ -311,6 +311,7 @@ function buildSubgoalRow(h, activeIso) {
                     if (h.id === selectedHabitId) {
                         updateCalendarRecord(activeIso, rec);
                         refreshDetailStats(h.id);
+                        renderSubGoalsSection(habit);
                     }
                 }
                 renderHabitList();
