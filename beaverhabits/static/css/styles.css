@@ -949,7 +949,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
     font-size: 12px; color: var(--text-secondary);
 }
 .timer-setting-row input {
-    width: 44px; padding: 4px 6px; border-radius: 6px;
+    width: 56px; padding: 4px 6px; border-radius: 6px;
     border: 1px solid var(--border); background: var(--bg-input);
     color: var(--text-primary); font-size: 13px; text-align: center;
 }
