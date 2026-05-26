@@ -206,13 +206,11 @@ function buildRegularRow(h, activeIso) {
     toggle.addEventListener('click', async (e) => {
         e.stopPropagation();
         const newCount = isDone ? 0 : h.target_count;
-        const prevClass = toggle.className;
-        toggle.className = 'hrow-toggle' + (newCount >= h.target_count ? ' done' : '');
         try {
             const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
                 count: newCount, date: activeIso, date_fmt: '%Y-%m-%d',
             });
-            // Update local state, avoid full N+1 refresh
+            // Patch local state with server response, then re-render
             const habit = allHabits.find(x => x.id === h.id);
             if (habit) {
                 let rec = habit.records?.find(r => r.day === activeIso);
@@ -222,7 +220,6 @@ function buildRegularRow(h, activeIso) {
                 }
                 rec.count = result.count;
                 rec.done = result.done;
-                // Keep calendar + stats in sync if this is the selected habit
                 if (h.id === selectedHabitId) {
                     updateCalendarRecord(activeIso, rec);
                     refreshDetailStats(h.id);
@@ -230,7 +227,6 @@ function buildRegularRow(h, activeIso) {
             }
             renderHabitList();
         } catch (err) {
-            toggle.className = prevClass;
             toast(err.message, 'error');
         }
     });
@@ -317,13 +313,11 @@ function buildSubgoalRow(h, activeIso) {
         pill.textContent = sg.name;
         pill.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const prevClass = pill.className;
-            pill.classList.toggle('done');
             try {
                 const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
                     date: activeIso, date_fmt: '%Y-%m-%d', sub_goal_id: sg.id,
                 });
-                // Update local record, re-render list only (no N+1 refresh)
+                // Patch local state with server response, then re-render
                 const habit = allHabits.find(x => x.id === h.id);
                 if (habit) {
                     let rec = habit.records?.find(r => r.day === activeIso);
@@ -342,7 +336,6 @@ function buildSubgoalRow(h, activeIso) {
                 }
                 renderHabitList();
             } catch (err) {
-                pill.className = prevClass;
                 toast(err.message, 'error');
             }
         });

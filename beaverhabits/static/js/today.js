@@ -22,15 +22,19 @@ const TODAY = localIso();
 
 // ── Storage keys ──────────────────────────────────────────────
 const PINNED_KEY        = 'hl-today-pinned';
-const TASK_MIGRATED_KEY = 'hl-tasks-migrated-v1'; // set after one-time localStorage→server migration
+const TASK_MIGRATED_KEY = 'hl-tasks-migrated-v1';
 
 // ── State ─────────────────────────────────────────────────────
 let allHabits  = [];
 let pinnedIds  = [];
-let viewDay    = TODAY;   // ISO of the day currently being viewed
-let taskItems  = [];      // tasks for viewDay
+let viewDay    = TODAY;
+let taskItems  = [];
 
-// ── Pinned persistence (stays in localStorage — device UI pref) ──
+// Tracks how many mutations are in-flight — silentRefresh skips when > 0
+let _inflight  = 0;
+let _lastRefresh = 0;
+
+// ── Pinned persistence (localStorage — per-device UI pref) ───
 function loadPinned() {
     try { return JSON.parse(localStorage.getItem(PINNED_KEY) || '[]'); }
     catch { return []; }
@@ -39,13 +43,9 @@ function savePinned() {
     localStorage.setItem(PINNED_KEY, JSON.stringify(pinnedIds));
 }
 
-// ── One-time migration: localStorage tasks → server ────────────
-// Pre-migration today.js stored tasks in `hl-today-tasks-YYYY-MM-DD`.
-// This runs once on first load of the server-side code and POSTs any
-// undone tasks to the API so they appear normally and PATCH doesn't 404.
+// ── One-time migration: localStorage tasks → server ───────────
 async function migrateLocalTasks() {
     if (localStorage.getItem(TASK_MIGRATED_KEY)) return;
-
     const toMigrate = [];
     for (let i = 0; i <= 14; i++) {
         const iso = isoAddDays(TODAY, -i);
@@ -54,20 +54,13 @@ async function migrateLocalTasks() {
             if (!raw) continue;
             const tasks = JSON.parse(raw);
             for (const t of tasks) {
-                if (t.text?.trim() && !t.done) {
-                    toMigrate.push({ text: t.text.trim(), date: iso });
-                }
+                if (t.text?.trim() && !t.done) toMigrate.push({ text: t.text.trim(), date: iso });
             }
         } catch {}
     }
-
-    // Best-effort upload — individual failures are silently skipped
     for (const task of toMigrate) {
         try { await api.post('/api/v1/tasks', task); } catch {}
     }
-
-    // Flag as migrated whether or not every post succeeded, to avoid
-    // retrying on every subsequent page load
     localStorage.setItem(TASK_MIGRATED_KEY, '1');
 }
 
@@ -79,11 +72,8 @@ async function fetchTasks(iso, carry = false) {
 // ── Switch viewing day ────────────────────────────────────────
 async function switchDay(iso) {
     viewDay = iso;
-    try {
-        taskItems = await fetchTasks(iso, iso === TODAY);
-    } catch {
-        taskItems = [];
-    }
+    try { taskItems = await fetchTasks(iso, iso === TODAY); }
+    catch { taskItems = []; }
     render();
 }
 
@@ -103,12 +93,12 @@ function sgsDone(habit, iso) {
     return todayRec(habit, iso)?.sub_goals_done || [];
 }
 
-// ── Progress ──────────────────────────────────────────────────
+// ── Progress bar ──────────────────────────────────────────────
 function recalcProgress() {
     const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
     let done = 0, total = 0;
-    for (const h of pinned)   { total++; if (habitDone(h, viewDay)) done++; }
-    for (const t of taskItems){ total++; if (t.done) done++; }
+    for (const h of pinned)    { total++; if (habitDone(h, viewDay)) done++; }
+    for (const t of taskItems) { total++; if (t.done) done++; }
     const pct = total > 0 ? Math.round(done / total * 100) : 0;
     document.getElementById('todayProgressFill').style.width = pct + '%';
     document.getElementById('todayProgressLabel').textContent = `${done} / ${total} done`;
@@ -118,7 +108,6 @@ function recalcProgress() {
 function render() {
     const isPast = viewDay < TODAY;
 
-    // Header
     document.getElementById('todayDate').textContent = fmtDisplay(viewDay);
     document.getElementById('todayNextBtn').disabled = viewDay >= TODAY;
 
@@ -128,7 +117,6 @@ function render() {
     const list = document.getElementById('todayList');
     list.innerHTML = '';
 
-    // Past-day read banner
     if (isPast) {
         const banner = document.createElement('div');
         banner.className = 'today-past-banner';
@@ -141,14 +129,12 @@ function render() {
     const carried = taskItems.filter(t => t.carriedFrom);
     const fresh   = taskItems.filter(t => !t.carriedFrom);
 
-    // Carried-over (today only)
     if (!isPast && carried.length > 0) {
         list.appendChild(makeSectionLabel('↑ Carried over'));
         carried.forEach(t => list.appendChild(makeTaskRow(t, isPast)));
         list.appendChild(makeDivider());
     }
 
-    // Pinned habits
     pinned.forEach(h => {
         list.appendChild(makeHabitRow(h, isPast));
         if (h._expanded && (h.sub_goals || []).length > 0) {
@@ -156,10 +142,8 @@ function render() {
         }
     });
 
-    // One-off tasks
     fresh.forEach(t => list.appendChild(makeTaskRow(t, isPast)));
 
-    // Add row (today only)
     if (!isPast) {
         list.appendChild(makeAddRow());
         list.appendChild(makePinSection());
@@ -190,7 +174,6 @@ function makeHabitRow(h, isPast) {
     row.className = 'today-row';
     row.dataset.habitId = h.id;
 
-    // Build icon element
     const iconSpan = document.createElement('span');
     iconSpan.className = 'today-row-icon';
     if (h.icon) iconSpan.appendChild(buildIconEl(h.icon, 15));
@@ -203,8 +186,6 @@ function makeHabitRow(h, isPast) {
             ? `<span class="today-badge habit">${doneCount}/${sgs.length}</span>`
             : `<span class="today-badge habit">habit</span>`}
     `;
-
-    // Insert icon after the drag handle
     row.insertBefore(iconSpan, row.querySelector('.today-check'));
 
     if (!isPast) {
@@ -246,7 +227,6 @@ function makeTaskRow(t, isPast) {
     wrap.className = 'today-task-wrap';
     wrap.dataset.taskId = t.id;
 
-    // Hidden delete button (revealed by swipe on mobile)
     const delBtn = document.createElement('div');
     delBtn.className = 'today-task-del';
     delBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
@@ -254,7 +234,6 @@ function makeTaskRow(t, isPast) {
 
     const row = document.createElement('div');
     row.className = 'today-row today-task-inner';
-
     row.innerHTML = `
         <span class="today-drag">⠿</span>
         <div class="today-check${t.done ? ' done' : ''}"></div>
@@ -270,11 +249,10 @@ function makeTaskRow(t, isPast) {
         });
         row.querySelector('.today-task-x')?.addEventListener('click', e => {
             e.stopPropagation();
-            deleteTask(t.id, wrap);
+            deleteTask(t.id);
         });
-        // Mobile swipe (only on touch devices)
         if (window.matchMedia('(hover: none)').matches) {
-            attachSwipe(wrap, row, delBtn, () => deleteTask(t.id, wrap));
+            attachSwipe(wrap, row, delBtn, () => deleteTask(t.id));
         }
     } else {
         row.addEventListener('click', () => toggleTask(t.id));
@@ -290,27 +268,22 @@ function makeAddRow() {
     row.innerHTML = `<span class="today-add-plus">+</span><input class="today-add-input" placeholder="Add task for today…" type="text">`;
     const inp = row.querySelector('input');
     inp.addEventListener('keydown', async e => {
-        if (e.key === 'Enter' && inp.value.trim()) {
+        if (e.key === 'Enter') {
             const text = inp.value.trim();
+            if (!text) return;
             inp.value = '';
-            // Optimistic: push a temp task immediately (_pending prevents toggle until saved)
-            const tempId = crypto.randomUUID();
-            taskItems.push({ id: tempId, text, done: false, _pending: true });
-            render();
-            setTimeout(() => document.querySelector('.today-add-input')?.focus(), 0);
-            _mutating++;
+            inp.disabled = true;
             try {
                 const created = await api.post('/api/v1/tasks', { text, date: viewDay });
-                // Replace temp with server-assigned task (real id, _pending cleared)
-                const idx = taskItems.findIndex(t => t.id === tempId);
-                if (idx !== -1) taskItems[idx] = created;
+                taskItems.push(created);
                 render();
-            } catch {
-                taskItems = taskItems.filter(t => t.id !== tempId);
-                render();
-                toast('Failed to add task', 'error');
-            } finally {
-                _mutating--;
+                // Restore focus to the newly rendered input
+                setTimeout(() => document.querySelector('.today-add-input')?.focus(), 0);
+            } catch (err) {
+                toast(err?.message || 'Failed to add task', 'error');
+                inp.disabled = false;
+                inp.value = text;
+                inp.focus();
             }
         }
         if (e.key === 'Escape') inp.blur();
@@ -342,16 +315,15 @@ function makePinSection() {
         box.style.cssText = `width:18px;height:18px;border-radius:4px;flex-shrink:0;transition:all .15s;display:flex;align-items:center;justify-content:center;border:1.5px solid ${isPinned ? 'var(--accent)' : 'var(--border)'};background:${isPinned ? 'var(--accent)' : 'transparent'};`;
         if (isPinned) box.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
 
+        const pinIcon = document.createElement('span');
+        pinIcon.className = 'today-row-icon';
+        if (h.icon) pinIcon.appendChild(buildIconEl(h.icon, 15));
+
         const name = document.createElement('span');
         name.style.cssText = 'font-size:0.875rem;color:var(--text-primary);';
         name.textContent = h.name;
 
-        row.appendChild(box);
-        const pinIcon = document.createElement('span');
-        pinIcon.className = 'today-row-icon';
-        if (h.icon) pinIcon.appendChild(buildIconEl(h.icon, 15));
-        row.appendChild(pinIcon);
-        row.appendChild(name);
+        row.append(box, pinIcon, name);
         row.addEventListener('click', () => {
             if (isPinned) pinnedIds = pinnedIds.filter(id => id !== h.id);
             else pinnedIds.push(h.id);
@@ -365,9 +337,11 @@ function makePinSection() {
     return wrap;
 }
 
-// ── Actions ───────────────────────────────────────────────────
+// ── Actions (Lockbox pattern: await → patch state → render) ──
+
 async function toggleHabit(h) {
     const isDone = habitDone(h, viewDay);
+    _inflight++;
     try {
         const res = await api.post(`/api/v1/habits/${h.id}/completions`, {
             date: viewDay, date_fmt: '%Y-%m-%d', done: !isDone,
@@ -376,10 +350,15 @@ async function toggleHabit(h) {
         if (!rec) { rec = { day: viewDay, done: false, count: 0, sub_goals_done: [] }; h.records.push(rec); }
         rec.done = res.done; rec.count = res.count;
         render();
-    } catch {}
+    } catch (err) {
+        toast(err?.message || 'Failed to update habit', 'error');
+    } finally {
+        _inflight--;
+    }
 }
 
 async function toggleSg(h, sgId) {
+    _inflight++;
     try {
         const res = await api.post(`/api/v1/habits/${h.id}/completions`, {
             date: viewDay, date_fmt: '%Y-%m-%d', sub_goal_id: sgId,
@@ -388,47 +367,42 @@ async function toggleSg(h, sgId) {
         if (!rec) { rec = { day: viewDay, done: false, count: 0, sub_goals_done: [] }; h.records.push(rec); }
         rec.done = res.done; rec.count = res.count; rec.sub_goals_done = res.sub_goals_done;
         render();
-    } catch {}
+    } catch (err) {
+        toast(err?.message || 'Failed to update sub-goal', 'error');
+    } finally {
+        _inflight--;
+    }
 }
 
 async function toggleTask(id) {
     const t = taskItems.find(x => x.id === id);
-    if (!t || t._pending) return; // skip tasks still being saved to server
-    const prev = t.done;
-    t.done = !prev;        // optimistic
-    render();
-    _mutating++;
+    if (!t) return;
+    _inflight++;
     try {
-        const updated = await api.patch(`/api/v1/tasks/${id}`, { done: t.done });
-        t.done = updated.done; // confirm server value
+        const updated = await api.patch(`/api/v1/tasks/${id}`, { done: !t.done });
+        t.done = updated.done;
         render();
     } catch (err) {
-        t.done = prev;     // revert
-        render();
         toast(err?.message || 'Failed to update task', 'error');
     } finally {
-        _mutating--;
+        _inflight--;
     }
 }
 
-async function deleteTask(id, wrapEl) {
-    const prev = [...taskItems];
-    taskItems = taskItems.filter(t => t.id !== id); // optimistic
-    wrapEl.style.transition = 'opacity .18s';
-    wrapEl.style.opacity = '0';
-    setTimeout(render, 200);
-    _mutating++;
+async function deleteTask(id) {
+    _inflight++;
     try {
         await api.delete(`/api/v1/tasks/${id}`);
-    } catch (err) {
-        taskItems = prev;  // revert
+        taskItems = taskItems.filter(t => t.id !== id);
         render();
+    } catch (err) {
         toast(err?.message || 'Failed to delete task', 'error');
     } finally {
-        _mutating--;
+        _inflight--;
     }
 }
 
+// ── Swipe-to-delete (mobile) ──────────────────────────────────
 function attachSwipe(wrap, inner, delBtn, onDelete) {
     const OPEN_W = 60, SNAP_AT = 30;
     let startX = 0, offsetX = 0, isOpen = false, dragging = false;
@@ -461,7 +435,6 @@ function attachSwipe(wrap, inner, delBtn, onDelete) {
         }
     }, { passive: true });
 
-    // Close on tap outside
     document.addEventListener('touchstart', e => {
         if (isOpen && !wrap.contains(e.target)) {
             inner.classList.add('swipe-snap');
@@ -479,23 +452,18 @@ function attachSwipe(wrap, inner, delBtn, onDelete) {
 }
 
 // ── Silent refresh (cross-device sync) ───────────────────────
-let _lastRefresh = 0;
-let _mutating = 0; // incremented while a POST/PATCH/DELETE is in-flight
 function silentRefresh() {
     const now = Date.now();
-    if (now - _lastRefresh < 3000) return; // at most once per 3s
+    if (_inflight > 0 || now - _lastRefresh < 3000) return;
     _lastRefresh = now;
     (async () => {
         try {
             const fresh = await fetchTasks(viewDay, viewDay === TODAY);
-            // Don't clobber optimistic state while a mutation is still in-flight
-            if (_mutating > 0) return;
-            // Only re-render if something actually changed
-            if (JSON.stringify(fresh) !== JSON.stringify(taskItems)) {
+            if (_inflight === 0 && JSON.stringify(fresh) !== JSON.stringify(taskItems)) {
                 taskItems = fresh;
                 render();
             }
-        } catch { /* silently ignore — stale data is fine */ }
+        } catch {}
     })();
 }
 
@@ -540,16 +508,13 @@ function computeStreak(habit) {
 }
 
 function computeWeekBars(pinnedHabits) {
-    // Returns array of 7 {iso, label, pct, isToday} objects covering the last 7 days ending on TODAY
     const bars = [];
     for (let i = 6; i >= 0; i--) {
         const iso = isoAddDays(TODAY, -i);
         const d = new Date(iso + 'T00:00:00');
         const label = ['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()];
         let done = 0;
-        for (const h of pinnedHabits) {
-            if (habitDone(h, iso)) done++;
-        }
+        for (const h of pinnedHabits) { if (habitDone(h, iso)) done++; }
         const pct = pinnedHabits.length > 0 ? done / pinnedHabits.length : 0;
         bars.push({ iso, label, pct, isToday: iso === TODAY });
     }
@@ -563,13 +528,12 @@ function renderStatsPanel() {
 
     const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
     let habitsDone = 0, habitsTotal = 0, tasksDone = 0, tasksTotal = 0;
-    for (const h of pinned) { habitsTotal++; if (habitDone(h, viewDay)) habitsDone++; }
+    for (const h of pinned)    { habitsTotal++; if (habitDone(h, viewDay)) habitsDone++; }
     for (const t of taskItems) { tasksTotal++; if (t.done) tasksDone++; }
-    const done = habitsDone + tasksDone;
+    const done  = habitsDone + tasksDone;
     const total = habitsTotal + tasksTotal;
-    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+    const pct   = total > 0 ? Math.round(done / total * 100) : 0;
 
-    // ── Progress cards ──
     const progSection = document.createElement('div');
     progSection.className = 'stats-panel-section';
     progSection.innerHTML = `
@@ -591,7 +555,6 @@ function renderStatsPanel() {
     `;
     panel.appendChild(progSection);
 
-    // ── Habit streaks ──
     if (pinned.length > 0) {
         const streakSection = document.createElement('div');
         streakSection.className = 'stats-panel-section';
@@ -625,7 +588,6 @@ function renderStatsPanel() {
         panel.appendChild(streakSection);
     }
 
-    // ── Weekly chart ──
     const weekSection = document.createElement('div');
     weekSection.className = 'stats-panel-section';
     const weekLabel = document.createElement('div');
@@ -633,10 +595,9 @@ function renderStatsPanel() {
     weekLabel.textContent = 'This week';
     weekSection.appendChild(weekLabel);
 
-    const bars = computeWeekBars(pinned);
-    const maxPct = Math.max(...bars.map(b => b.pct), 0.01);
-
-    const barsEl = document.createElement('div');
+    const bars    = computeWeekBars(pinned);
+    const maxPct  = Math.max(...bars.map(b => b.pct), 0.01);
+    const barsEl  = document.createElement('div');
     barsEl.className = 'stats-week-bars';
     const labelsEl = document.createElement('div');
     labelsEl.className = 'stats-week-labels';
@@ -665,10 +626,8 @@ function renderStatsPanel() {
 document.addEventListener('DOMContentLoaded', async () => {
     pinnedIds = loadPinned();
 
-    // Migrate any tasks that existed only in localStorage (pre-server-sync era)
     await migrateLocalTasks();
 
-    // Fetch tasks and habits in parallel
     const [tasksResult, habitsResult] = await Promise.allSettled([
         fetchTasks(TODAY, true),
         api.get('/api/v1/habits'),
@@ -681,7 +640,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         savePinned();
     }
 
-    // Nav arrows
     document.getElementById('todayPrevBtn').addEventListener('click', () => {
         switchDay(isoAddDays(viewDay, -1));
     });
@@ -689,7 +647,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (viewDay < TODAY) switchDay(isoAddDays(viewDay, 1));
     });
 
-    // Cross-device sync: re-fetch tasks whenever tab/window regains focus
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') silentRefresh();
     });
