@@ -13,13 +13,14 @@ let searchTerm = '';
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 // ── Utils ─────────────────────────────────────────────────────
-function isoToday() {
-    const d = new Date(); d.setHours(0,0,0,0);
-    return d.toISOString().slice(0, 10);
+// Local ISO date — avoids UTC mismatch on users ahead of UTC (e.g. UTC+1 late night)
+function localIso(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+function isoToday() { return localIso(); }
 function isoNDaysAgo(n) {
-    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - n);
-    return d.toISOString().slice(0, 10);
+    const d = new Date(); d.setDate(d.getDate() - n);
+    return localIso(d);
 }
 function recordForDay(records, iso) {
     return records?.find(r => r.day === iso) || null;
@@ -511,7 +512,7 @@ async function renderRecentNotes(habitId) {
 async function refreshDetailStats(id) {
     if (id !== selectedHabitId) return;
     try {
-        const stats = await api.get(`/api/v1/habits/${id}/stats`);
+        const stats = await api.get(`/api/v1/habits/${id}/stats?today=${localIso()}`);
         document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
         document.getElementById('statTotalCheckins').textContent    = stats.total;
         document.getElementById('statMonthlyRate').textContent      = `${stats.all_time_rate}%`;
@@ -542,7 +543,7 @@ async function selectHabit(id) {
 
     // Load stats
     try {
-        const stats = await api.get(`/api/v1/habits/${id}/stats`);
+        const stats = await api.get(`/api/v1/habits/${id}/stats?today=${localIso()}`);
         document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
         document.getElementById('statTotalCheckins').textContent    = stats.total;
         document.getElementById('statMonthlyRate').textContent      = `${stats.all_time_rate}%`;
@@ -580,9 +581,10 @@ function wireDetailMore() {
 export async function refreshHabits() {
     const raw = await api.get('/api/v1/habits');
     // Enrich with streak/total from stats (batch async)
+    const todayParam = localIso();
     allHabits = await Promise.all(raw.map(async h => {
         try {
-            const s = await api.get(`/api/v1/habits/${h.id}/stats`);
+            const s = await api.get(`/api/v1/habits/${h.id}/stats?today=${todayParam}`);
             h._streak = s.streak;
             h._total = s.total;
         } catch { h._streak = 0; h._total = 0; }

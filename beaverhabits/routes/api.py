@@ -395,11 +395,19 @@ def _scoped_percent(
 @api_router.get("/habits/{habit_id}/stats", tags=["habits"])
 async def get_habit_stats(
     habit_id: str,
+    today: str | None = Query(None, description="Client local date YYYY-MM-DD; falls back to server UTC if omitted"),
     user: User = Depends(current_active_user),
 ):
     habit = await _get_user_habit(user, habit_id)
     target = habit.target_count
-    today = datetime.date.today()
+    # Prefer client-supplied local date to avoid UTC vs local-timezone mismatch
+    if today:
+        try:
+            today = datetime.date.fromisoformat(today)
+        except ValueError:
+            today = datetime.date.today()
+    else:
+        today = datetime.date.today()
     done_dates = sorted(
         (r.day for r in habit.records if r.count >= target),
         reverse=True,
