@@ -997,7 +997,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
     font-size: 0.73rem; color: var(--text-secondary);
     padding: 3px 9px; border-radius: 20px;
     border: 1px solid var(--border); cursor: pointer;
-    transition: all .12s; background: var(--bg);
+    transition: all .12s; background: var(--bg-primary);
 }
 .today-sg-pip:hover { border-color: var(--accent); color: var(--accent); }
 .today-sg-pip.done {
@@ -1035,7 +1035,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
 }
 .today-task-inner {
     position: relative; z-index: 1;
-    background: var(--bg); will-change: transform;
+    background: var(--bg-primary); will-change: transform;
     border-radius: 8px;
 }
 .today-task-inner.swipe-snap {
