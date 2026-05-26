@@ -260,14 +260,15 @@ function makeAddRow() {
         if (e.key === 'Enter' && inp.value.trim()) {
             const text = inp.value.trim();
             inp.value = '';
-            // Optimistic: push a temp task immediately
+            // Optimistic: push a temp task immediately (_pending prevents toggle until saved)
             const tempId = crypto.randomUUID();
-            taskItems.push({ id: tempId, text, done: false });
+            taskItems.push({ id: tempId, text, done: false, _pending: true });
             render();
             setTimeout(() => document.querySelector('.today-add-input')?.focus(), 0);
+            _mutating++;
             try {
                 const created = await api.post('/api/v1/tasks', { text, date: viewDay });
-                // Replace temp with server-assigned task (real id)
+                // Replace temp with server-assigned task (real id, _pending cleared)
                 const idx = taskItems.findIndex(t => t.id === tempId);
                 if (idx !== -1) taskItems[idx] = created;
                 render();
@@ -275,6 +276,8 @@ function makeAddRow() {
                 taskItems = taskItems.filter(t => t.id !== tempId);
                 render();
                 toast('Failed to add task', 'error');
+            } finally {
+                _mutating--;
             }
         }
         if (e.key === 'Escape') inp.blur();
@@ -357,18 +360,21 @@ async function toggleSg(h, sgId) {
 
 async function toggleTask(id) {
     const t = taskItems.find(x => x.id === id);
-    if (!t) return;
+    if (!t || t._pending) return; // skip tasks still being saved to server
     const prev = t.done;
     t.done = !prev;        // optimistic
     render();
+    _mutating++;
     try {
         const updated = await api.patch(`/api/v1/tasks/${id}`, { done: t.done });
         t.done = updated.done; // confirm server value
         render();
-    } catch {
+    } catch (err) {
         t.done = prev;     // revert
         render();
-        toast('Failed to update task', 'error');
+        toast(err?.message || 'Failed to update task', 'error');
+    } finally {
+        _mutating--;
     }
 }
 
@@ -378,12 +384,15 @@ async function deleteTask(id, wrapEl) {
     wrapEl.style.transition = 'opacity .18s';
     wrapEl.style.opacity = '0';
     setTimeout(render, 200);
+    _mutating++;
     try {
         await api.delete(`/api/v1/tasks/${id}`);
-    } catch {
+    } catch (err) {
         taskItems = prev;  // revert
         render();
-        toast('Failed to delete task', 'error');
+        toast(err?.message || 'Failed to delete task', 'error');
+    } finally {
+        _mutating--;
     }
 }
 
@@ -438,6 +447,7 @@ function attachSwipe(wrap, inner, delBtn, onDelete) {
 
 // ── Silent refresh (cross-device sync) ───────────────────────
 let _lastRefresh = 0;
+let _mutating = 0; // incremented while a POST/PATCH/DELETE is in-flight
 function silentRefresh() {
     const now = Date.now();
     if (now - _lastRefresh < 3000) return; // at most once per 3s
@@ -445,6 +455,8 @@ function silentRefresh() {
     (async () => {
         try {
             const fresh = await fetchTasks(viewDay, viewDay === TODAY);
+            // Don't clobber optimistic state while a mutation is still in-flight
+            if (_mutating > 0) return;
             // Only re-render if something actually changed
             if (JSON.stringify(fresh) !== JSON.stringify(taskItems)) {
                 taskItems = fresh;
