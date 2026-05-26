@@ -4,6 +4,11 @@ import { api, toast } from '/static/js/api.js';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
+// Local ISO helper — avoids UTC offset shifting the date for UTC+ users
+function localIso(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 // ── Module state ─────────────────────────────────────────────
 let calState = null;
 // calState = { habitId, subGoals, target, year, month, recordsByDay }
@@ -85,7 +90,7 @@ function renderCalGrid(host) {
 
     for (let d = 1; d <= daysInMonth; d++) {
         const cellDate = new Date(year, month, d);
-        const iso = cellDate.toISOString().slice(0, 10);
+        const iso = localIso(cellDate);
         const rec = recordsByDay.get(iso) || { count: 0, done: false, sub_goals_done: [] };
         const isFuture = cellDate > today;
         const isToday = cellDate.getTime() === today.getTime();
@@ -290,7 +295,7 @@ export function renderDailyChart(target, records) {
     // Build count array [day1, day2, ..., dayN]
     const counts = [];
     for (let d = 1; d <= daysInMonth; d++) {
-        const iso = new Date(year, month, d).toISOString().slice(0, 10);
+        const iso = localIso(new Date(year, month, d));
         const rec = records.find(r => r.day === iso);
         counts.push(rec ? rec.count : 0);
     }

@@ -369,7 +369,7 @@ function computeWeeklyTrend(records, weeks = 8) {
         const cursor = new Date(weekMonday);
         while (cursor <= effectiveEnd) {
             total++;
-            const iso = cursor.toISOString().slice(0, 10);
+            const iso = localIso(cursor);
             if (doneSet.has(iso)) done++;
             cursor.setDate(cursor.getDate() + 1);
         }
@@ -417,7 +417,7 @@ function renderSubGoalsSection(habit) {
     }
     section.style.display = 'block';
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localIso();
     const todayRec = (habit.records || []).find(r => r.day === today);
     const doneSgIds = new Set(todayRec?.sub_goals_done || []);
 
@@ -621,7 +621,7 @@ document.addEventListener('cal:toggled', ({ detail: { habitId, iso, newRec, prev
     if (habitId !== selectedHabitId) return;
 
     // Optimistic stat update — adjust monthly count right now, no round-trip
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const currentMonth = localIso().slice(0, 7);
     if (iso.slice(0, 7) === currentMonth) {
         const el = document.getElementById('statMonthlyCheckins');
         if (el) {
@@ -633,7 +633,7 @@ document.addEventListener('cal:toggled', ({ detail: { habitId, iso, newRec, prev
     // Accurate async refresh for streak, rate, totals
     refreshDetailStats(habitId);
     // Re-render sub-goals if the toggled date is today
-    if (habit && iso === new Date().toISOString().slice(0, 10)) {
+    if (habit && iso === localIso()) {
         renderSubGoalsSection(habit);
     }
 });
