@@ -227,19 +227,46 @@ function makeSgExpander(h, isPast) {
 }
 
 function makeTaskRow(t, isPast) {
+    const wrap = document.createElement('div');
+    wrap.className = 'today-task-wrap';
+    wrap.dataset.taskId = t.id;
+
+    // Hidden delete button (revealed by swipe on mobile)
+    const delBtn = document.createElement('div');
+    delBtn.className = 'today-task-del';
+    delBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+    wrap.appendChild(delBtn);
+
     const row = document.createElement('div');
-    row.className = 'today-row';
-    row.dataset.taskId = t.id;
+    row.className = 'today-row today-task-inner';
 
     row.innerHTML = `
         <span class="today-drag">⠿</span>
         <div class="today-check${t.done ? ' done' : ''}"></div>
         <span class="today-name${t.done ? ' done' : ''}">${escHtml(t.text)}</span>
         ${t.carriedFrom ? `<span class="today-badge carryover">↑ yesterday</span>` : ''}
+        ${!isPast ? `<button class="today-task-x" title="Delete task">✕</button>` : ''}
     `;
 
-    if (!isPast) row.addEventListener('click', () => toggleTask(t.id));
-    return row;
+    if (!isPast) {
+        row.addEventListener('click', e => {
+            if (e.target.closest('.today-task-x')) return;
+            toggleTask(t.id);
+        });
+        row.querySelector('.today-task-x')?.addEventListener('click', e => {
+            e.stopPropagation();
+            deleteTask(t.id, wrap);
+        });
+        // Mobile swipe (only on touch devices)
+        if (window.matchMedia('(hover: none)').matches) {
+            attachSwipe(wrap, row, delBtn, () => deleteTask(t.id, wrap));
+        }
+    } else {
+        row.addEventListener('click', () => toggleTask(t.id));
+    }
+
+    wrap.appendChild(row);
+    return wrap;
 }
 
 function makeAddRow() {
@@ -336,6 +363,64 @@ async function toggleSg(h, sgId) {
 function toggleTask(id) {
     const t = taskItems.find(x => x.id === id);
     if (t) { t.done = !t.done; saveTasks(); render(); }
+}
+
+function deleteTask(id, wrapEl) {
+    taskItems = taskItems.filter(t => t.id !== id);
+    saveTasks();
+    // Animate out before full re-render
+    wrapEl.style.transition = 'opacity .18s';
+    wrapEl.style.opacity = '0';
+    setTimeout(render, 200);
+}
+
+function attachSwipe(wrap, inner, delBtn, onDelete) {
+    const OPEN_W = 60, SNAP_AT = 30;
+    let startX = 0, offsetX = 0, isOpen = false, dragging = false;
+
+    inner.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+        offsetX = isOpen ? -OPEN_W : 0;
+        dragging = false;
+        inner.classList.remove('swipe-snap');
+    }, { passive: true });
+
+    inner.addEventListener('touchmove', e => {
+        const dx = e.touches[0].clientX - startX;
+        if (!dragging && Math.abs(dx) < 5) return;
+        dragging = true;
+        const next = Math.min(0, Math.max(-OPEN_W, offsetX + dx));
+        inner.style.transform = `translateX(${next}px)`;
+    }, { passive: true });
+
+    inner.addEventListener('touchend', e => {
+        if (!dragging) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        inner.classList.add('swipe-snap');
+        if (!isOpen && dx < -SNAP_AT) {
+            inner.style.transform = `translateX(${-OPEN_W}px)`;
+            isOpen = true;
+        } else {
+            inner.style.transform = 'translateX(0)';
+            isOpen = false;
+        }
+    });
+
+    // Close on tap outside
+    document.addEventListener('touchstart', e => {
+        if (isOpen && !wrap.contains(e.target)) {
+            inner.classList.add('swipe-snap');
+            inner.style.transform = 'translateX(0)';
+            isOpen = false;
+        }
+    }, { passive: true });
+
+    delBtn.addEventListener('click', () => {
+        inner.classList.add('swipe-snap');
+        inner.style.transform = 'translateX(0)';
+        isOpen = false;
+        onDelete();
+    });
 }
 
 // ── Sortable ──────────────────────────────────────────────────
