@@ -4,12 +4,15 @@
 const DEFAULTS = { work: 25, break: 5 };
 let state = {
     mode: 'work',        // 'work' | 'break'
-    remaining: 0,        // seconds
+    remaining: 0,        // seconds (display value — recomputed from wall clock)
     running: false,
     workMin: parseInt(localStorage.getItem('timer-work') || DEFAULTS.work),
     breakMin: parseInt(localStorage.getItem('timer-break') || DEFAULTS.break),
 };
 let _interval = null;
+// Wall-clock anchor — set when timer starts/resumes so background throttling doesn't drift
+let _startedAt = null;     // Date.now() when running started
+let _remainingAtStart = 0; // state.remaining at that moment
 
 // ── Helpers ───────────────────────────────────────────────────
 function fmtTime(sec) {
@@ -30,20 +33,32 @@ function pct() {
 // ── Core controls ─────────────────────────────────────────────
 function startTimer() {
     if (state.remaining === 0) state.remaining = totalSeconds();
+    // Anchor to wall clock so background throttling can't cause drift
+    _startedAt = Date.now();
+    _remainingAtStart = state.remaining;
     state.running = true;
     clearInterval(_interval);
-    _interval = setInterval(() => {
-        if (!state.running) return;
-        state.remaining--;
-        updateUI();
-        updateNavPill();
-        if (state.remaining <= 0) onTimerEnd();
-    }, 1000);
+    // Tick every 250ms — still cheap, but catches the endpoint quickly even when throttled
+    _interval = setInterval(tick, 250);
     updateUI();
     updateNavPill();
 }
 
+function tick() {
+    if (!state.running) return;
+    const elapsed = Math.floor((Date.now() - _startedAt) / 1000);
+    state.remaining = Math.max(0, _remainingAtStart - elapsed);
+    updateUI();
+    updateNavPill();
+    if (state.remaining <= 0) onTimerEnd();
+}
+
 function pauseTimer() {
+    // Snapshot remaining before stopping so resume is accurate
+    if (state.running) {
+        const elapsed = Math.floor((Date.now() - _startedAt) / 1000);
+        state.remaining = Math.max(0, _remainingAtStart - elapsed);
+    }
     state.running = false;
     clearInterval(_interval);
     updateUI();
@@ -53,6 +68,7 @@ function pauseTimer() {
 function resetTimer() {
     state.running = false;
     clearInterval(_interval);
+    _startedAt = null;
     state.remaining = totalSeconds();
     updateUI();
     updateNavPill();
@@ -61,6 +77,7 @@ function resetTimer() {
 function skipPhase() {
     state.running = false;
     clearInterval(_interval);
+    _startedAt = null;
     state.mode = state.mode === 'work' ? 'break' : 'work';
     state.remaining = totalSeconds();
     updateUI();
@@ -209,6 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close on backdrop click
     document.getElementById('timerOverlay')?.addEventListener('click', e => {
         if (e.target === document.getElementById('timerOverlay')) closeTimer();
+    });
+
+    // Snap display immediately when user tabs back — don't wait for next throttled tick
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && state.running) tick();
     });
 
     updateUI();
