@@ -21,7 +21,8 @@ function fmtDisplay(iso) {
 const TODAY = localIso();
 
 // ── Storage keys ──────────────────────────────────────────────
-const PINNED_KEY = 'hl-today-pinned';
+const PINNED_KEY        = 'hl-today-pinned';
+const TASK_MIGRATED_KEY = 'hl-tasks-migrated-v1'; // set after one-time localStorage→server migration
 
 // ── State ─────────────────────────────────────────────────────
 let allHabits  = [];
@@ -36,6 +37,38 @@ function loadPinned() {
 }
 function savePinned() {
     localStorage.setItem(PINNED_KEY, JSON.stringify(pinnedIds));
+}
+
+// ── One-time migration: localStorage tasks → server ────────────
+// Pre-migration today.js stored tasks in `hl-today-tasks-YYYY-MM-DD`.
+// This runs once on first load of the server-side code and POSTs any
+// undone tasks to the API so they appear normally and PATCH doesn't 404.
+async function migrateLocalTasks() {
+    if (localStorage.getItem(TASK_MIGRATED_KEY)) return;
+
+    const toMigrate = [];
+    for (let i = 0; i <= 14; i++) {
+        const iso = isoAddDays(TODAY, -i);
+        try {
+            const raw = localStorage.getItem(`hl-today-tasks-${iso}`);
+            if (!raw) continue;
+            const tasks = JSON.parse(raw);
+            for (const t of tasks) {
+                if (t.text?.trim() && !t.done) {
+                    toMigrate.push({ text: t.text.trim(), date: iso });
+                }
+            }
+        } catch {}
+    }
+
+    // Best-effort upload — individual failures are silently skipped
+    for (const task of toMigrate) {
+        try { await api.post('/api/v1/tasks', task); } catch {}
+    }
+
+    // Flag as migrated whether or not every post succeeded, to avoid
+    // retrying on every subsequent page load
+    localStorage.setItem(TASK_MIGRATED_KEY, '1');
 }
 
 // ── Task API ──────────────────────────────────────────────────
@@ -631,6 +664,9 @@ function renderStatsPanel() {
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     pinnedIds = loadPinned();
+
+    // Migrate any tasks that existed only in localStorage (pre-server-sync era)
+    await migrateLocalTasks();
 
     // Fetch tasks and habits in parallel
     const [tasksResult, habitsResult] = await Promise.allSettled([
