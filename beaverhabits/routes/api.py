@@ -727,6 +727,10 @@ async def get_tasks_route(
     carry: bool = False,
     habit_list: HabitList = Depends(current_habit_list),
 ):
+    try:
+        datetime.date.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format; expected YYYY-MM-DD")
     return habit_list.get_tasks(date, carry=carry)
 
 
