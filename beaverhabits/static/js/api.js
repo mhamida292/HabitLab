@@ -52,6 +52,7 @@ export const api = {
     get: (path) => _fetch('GET', path),
     post: (path, body) => _fetch('POST', path, { body }),
     put: (path, body) => _fetch('PUT', path, { body }),
+    patch: (path, body) => _fetch('PATCH', path, { body }),
     delete: (path) => _fetch('DELETE', path),
     upload: (path, formData) => _fetch('POST', path, { body: formData }),
 };
