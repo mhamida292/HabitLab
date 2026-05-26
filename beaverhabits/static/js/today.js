@@ -1,5 +1,6 @@
 // beaverhabits/static/js/today.js — Daily task list
 import { api } from '/static/js/api.js';
+import { isEmoji, applyIcons } from '/static/js/icons.js';
 
 // ── Date helpers ─────────────────────────────────────────────
 function localIso(d = new Date()) {
@@ -147,6 +148,8 @@ function render() {
         list.appendChild(makeAddRow());
         list.appendChild(makePinSection());
     }
+
+    applyIcons();
 }
 
 // ── Row builders ──────────────────────────────────────────────
@@ -171,6 +174,20 @@ function makeHabitRow(h, isPast) {
     row.className = 'today-row';
     row.dataset.habitId = h.id;
 
+    // Build icon element
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'today-row-icon';
+    if (h.icon) {
+        if (isEmoji(h.icon)) {
+            iconSpan.textContent = h.icon;
+        } else {
+            const i = document.createElement('i');
+            i.dataset.lucide = h.icon;
+            i.style.cssText = 'width:15px;height:15px;display:block';
+            iconSpan.appendChild(i);
+        }
+    }
+
     row.innerHTML = `
         <span class="today-drag">⠿</span>
         <div class="today-check${done ? ' done' : ''}"></div>
@@ -179,6 +196,9 @@ function makeHabitRow(h, isPast) {
             ? `<span class="today-badge habit">${doneCount}/${sgs.length}</span>`
             : `<span class="today-badge habit">habit</span>`}
     `;
+
+    // Insert icon after the drag handle
+    row.insertBefore(iconSpan, row.querySelector('.today-check'));
 
     if (!isPast) {
         if (sgs.length > 0) {
@@ -277,6 +297,19 @@ function makePinSection() {
         name.textContent = h.name;
 
         row.appendChild(box);
+        const pinIcon = document.createElement('span');
+        pinIcon.style.cssText = 'font-size:15px;width:20px;text-align:center;flex-shrink:0;';
+        if (h.icon) {
+            if (isEmoji(h.icon)) {
+                pinIcon.textContent = h.icon;
+            } else {
+                const i = document.createElement('i');
+                i.dataset.lucide = h.icon;
+                i.style.cssText = 'width:15px;height:15px;display:block';
+                pinIcon.appendChild(i);
+            }
+        }
+        row.appendChild(pinIcon);
         row.appendChild(name);
         row.addEventListener('click', () => {
             if (isPinned) pinnedIds = pinnedIds.filter(id => id !== h.id);

@@ -944,6 +944,11 @@ textarea.finp { resize: vertical; min-height: 80px; }
     cursor: pointer; transition: background .12s; user-select: none;
 }
 .today-row:hover { background: var(--bg-elevated); }
+.today-row-icon {
+    width: 18px; text-align: center; flex-shrink: 0;
+    font-size: 15px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+}
 .today-drag {
     width: 14px; color: var(--text-muted); opacity: 0; cursor: grab;
     font-size: 13px; flex-shrink: 0; transition: opacity .1s;
