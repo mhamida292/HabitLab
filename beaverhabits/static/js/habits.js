@@ -815,17 +815,19 @@ function initContextMenu() {
 
     // Edit action — opens the habit edit modal (same as "···" button in detail panel)
     menu.querySelector('#ctxEdit').addEventListener('click', () => {
+        const habit = _ctxHabit;
         hideCtxMenu();
-        if (_ctxHabit) openHabitModal(_ctxHabit);
+        if (habit) openHabitModal(habit);
     });
 
     // Archive action
     menu.querySelector('#ctxArchive').addEventListener('click', async () => {
+        const habit = _ctxHabit;
         hideCtxMenu();
-        if (!_ctxHabit) return;
+        if (!habit) return;
         try {
-            await api.put(`/api/v1/habits/${_ctxHabit.id}`, { status: 'archive' });
-            allHabits = allHabits.filter(h => h.id !== _ctxHabit.id);
+            await api.put(`/api/v1/habits/${habit.id}`, { status: 'archive' });
+            allHabits = allHabits.filter(h => h.id !== habit.id);
             renderHabitList();
             toast('Habit archived');
         } catch (err) {
@@ -835,13 +837,14 @@ function initContextMenu() {
 
     // Delete action
     menu.querySelector('#ctxDelete').addEventListener('click', () => {
+        const habit = _ctxHabit;
         hideCtxMenu();
-        if (!_ctxHabit) return;
-        const confirmed = window.confirm(`Delete "${_ctxHabit.name}" permanently? This cannot be undone.`);
+        if (!habit) return;
+        const confirmed = window.confirm(`Delete "${habit.name}" permanently? This cannot be undone.`);
         if (!confirmed) return;
-        api.delete(`/api/v1/habits/${_ctxHabit.id}`)
+        api.delete(`/api/v1/habits/${habit.id}`)
             .then(() => {
-                allHabits = allHabits.filter(h => h.id !== _ctxHabit.id);
+                allHabits = allHabits.filter(h => h.id !== habit.id);
                 renderHabitList();
                 toast('Habit deleted');
             })
