@@ -430,3 +430,59 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         before = len(notes)
         self.data["notes"] = [n for n in notes if n["id"] != note_id]
         return len(self.data["notes"]) < before
+
+    # ── Tasks ─────────────────────────────────────────────────────────────
+    def get_tasks(self, date: str, carry: bool = False) -> list[dict]:
+        all_tasks = self.data.setdefault("tasks", [])
+        date_tasks = [t for t in all_tasks if t.get("date") == date]
+
+        if not carry:
+            return date_tasks
+
+        seen_ids = {t["id"] for t in date_tasks}
+        carried = []
+        date_obj = datetime.date.fromisoformat(date)
+        for i in range(1, 8):
+            past = (date_obj - datetime.timedelta(days=i)).isoformat()
+            for t in all_tasks:
+                if (
+                    t.get("date") == past
+                    and not t.get("done", False)
+                    and t["id"] not in seen_ids
+                ):
+                    carried.append({**t, "carriedFrom": past})
+                    seen_ids.add(t["id"])
+
+        return carried + date_tasks
+
+    def add_task(self, date: str, text: str) -> dict:
+        task = {
+            "id": uuid.uuid4().hex[:8],
+            "text": text.strip(),
+            "done": False,
+            "date": date,
+        }
+        self.data.setdefault("tasks", []).append(task)
+        return task
+
+    def update_task(
+        self,
+        task_id: str,
+        done: bool | None = None,
+        text: str | None = None,
+    ) -> dict | None:
+        tasks = self.data.setdefault("tasks", [])
+        task = next((t for t in tasks if t["id"] == task_id), None)
+        if task is None:
+            return None
+        if done is not None:
+            task["done"] = done
+        if text is not None:
+            task["text"] = text.strip()
+        return task
+
+    def delete_task(self, task_id: str) -> bool:
+        tasks = self.data.setdefault("tasks", [])
+        before = len(tasks)
+        self.data["tasks"] = [t for t in tasks if t["id"] != task_id]
+        return len(self.data["tasks"]) < before
