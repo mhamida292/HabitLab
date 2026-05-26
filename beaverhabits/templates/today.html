@@ -4,7 +4,9 @@
 
 {% block panels %}
 <div class="today-panel">
-    <div class="today-inner">
+
+    <!-- ── List column ───────────────────────────────────── -->
+    <div class="today-list-col">
         <div class="today-nav-row">
             <button class="today-nav-btn" id="todayPrevBtn" title="Previous day">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -22,6 +24,10 @@
         </div>
         <div id="todayList"></div>
     </div>
+
+    <!-- ── Stats column (desktop only) ──────────────────── -->
+    <div class="today-stats-col" id="todayStatsPanel"></div>
+
 </div>
 {% endblock %}
 
