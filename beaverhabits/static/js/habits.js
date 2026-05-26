@@ -241,6 +241,31 @@ function buildRegularRow(h, activeIso) {
 
     row.append(handle, icon, body, toggle);
     row.addEventListener('click', () => selectHabit(h.id));
+    row.addEventListener('contextmenu', e => showCtxMenu(e, h));
+
+    // Mobile swipe wrap
+    if (window.matchMedia('(hover: none)').matches) {
+        const wrap = document.createElement('div');
+        wrap.className = 'hrow-wrap';
+        row.classList.add('hrow-swipe-inner');
+
+        const swipeBtns = document.createElement('div');
+        swipeBtns.className = 'hrow-swipe-btns';
+
+        const archBtn = document.createElement('div');
+        archBtn.className = 'hrow-swipe-btn archive';
+        archBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'hrow-swipe-btn delete';
+        delBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+        swipeBtns.append(archBtn, delBtn);
+        wrap.append(swipeBtns, row);
+        attachHabitSwipe(wrap, row, archBtn, delBtn, h);
+        return wrap;
+    }
+
     return row;
 }
 
@@ -335,7 +360,122 @@ function buildSubgoalRow(h, activeIso) {
         if (e.target.closest('.sg-pill')) return;
         selectHabit(h.id);
     });
+    row.addEventListener('contextmenu', e => showCtxMenu(e, h));
+
+    // Mobile swipe wrap
+    if (window.matchMedia('(hover: none)').matches) {
+        const wrap = document.createElement('div');
+        wrap.className = 'hrow-wrap';
+        row.classList.add('hrow-swipe-inner');
+
+        const swipeBtns = document.createElement('div');
+        swipeBtns.className = 'hrow-swipe-btns';
+
+        const archBtn = document.createElement('div');
+        archBtn.className = 'hrow-swipe-btn archive';
+        archBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'hrow-swipe-btn delete';
+        delBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+        swipeBtns.append(archBtn, delBtn);
+        wrap.append(swipeBtns, row);
+        attachHabitSwipe(wrap, row, archBtn, delBtn, h);
+        return wrap;
+    }
+
     return row;
+}
+
+// ── Mobile swipe: archive / delete ────────────────────────────
+function attachHabitSwipe(wrap, inner, archBtn, delBtn, habit) {
+    const OPEN_W = 120, SNAP_AT = 48;
+    let startX = 0, offsetX = 0, isOpen = false, dragging = false;
+
+    inner.addEventListener('touchstart', e => {
+        startX = e.touches[0].clientX;
+        offsetX = isOpen ? -OPEN_W : 0;
+        dragging = false;
+        inner.classList.remove('swipe-snap');
+    }, { passive: true });
+
+    inner.addEventListener('touchmove', e => {
+        const dx = e.touches[0].clientX - startX;
+        if (!dragging && Math.abs(dx) < 5) return;
+        dragging = true;
+        const next = Math.min(0, Math.max(-OPEN_W, offsetX + dx));
+        inner.style.transform = `translateX(${next}px)`;
+    }, { passive: true });
+
+    inner.addEventListener('touchend', e => {
+        if (!dragging) return;
+        const dx = e.changedTouches[0].clientX - startX;
+        inner.classList.add('swipe-snap');
+        if (!isOpen && dx < -SNAP_AT) {
+            inner.style.transform = `translateX(${-OPEN_W}px)`;
+            isOpen = true;
+        } else {
+            inner.style.transform = 'translateX(0)';
+            isOpen = false;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchstart', e => {
+        if (isOpen && !wrap.contains(e.target)) {
+            inner.classList.add('swipe-snap');
+            inner.style.transform = 'translateX(0)';
+            isOpen = false;
+        }
+    }, { passive: true });
+
+    function closeSwipe() {
+        inner.classList.add('swipe-snap');
+        inner.style.transform = 'translateX(0)';
+        isOpen = false;
+    }
+
+    archBtn.addEventListener('click', async () => {
+        closeSwipe();
+        try {
+            await api.put(`/api/v1/habits/${habit.id}`, { status: 'archive' });
+            allHabits = allHabits.filter(h => h.id !== habit.id);
+            renderHabitList();
+            toast('Habit archived');
+        } catch (err) {
+            toast(err.message || 'Failed to archive', 'error');
+        }
+    });
+
+    delBtn.addEventListener('click', () => {
+        closeSwipe();
+        // Show inline confirmation banner below the row
+        const confirm = document.createElement('div');
+        confirm.className = 'hrow-delete-confirm';
+        confirm.innerHTML = `
+            <span style="flex:1">Delete "${escapeHtml(habit.name)}" permanently?</span>
+            <button class="hrow-confirm-yes">Delete</button>
+            <button class="hrow-confirm-no">Cancel</button>
+        `;
+        wrap.appendChild(confirm);
+
+        confirm.querySelector('.hrow-confirm-yes').addEventListener('click', async () => {
+            try {
+                await api.delete(`/api/v1/habits/${habit.id}`);
+                allHabits = allHabits.filter(h => h.id !== habit.id);
+                renderHabitList();
+                toast('Habit deleted');
+            } catch (err) {
+                toast(err.message || 'Failed to delete', 'error');
+                confirm.remove();
+            }
+        });
+        confirm.querySelector('.hrow-confirm-no').addEventListener('click', () => confirm.remove());
+    });
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 /**
@@ -638,12 +778,108 @@ document.addEventListener('cal:toggled', ({ detail: { habitId, iso, newRec, prev
     }
 });
 
+// ── Right-click context menu (desktop) ────────────────────────
+let _ctxHabit = null;
+
+function initContextMenu() {
+    // Only attach on pointer (non-touch) devices
+    if (!window.matchMedia('(hover: hover)').matches) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'ctx-menu';
+    menu.id = 'habitCtxMenu';
+    menu.innerHTML = `
+        <div class="ctx-menu-item" id="ctxEdit">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit habit
+        </div>
+        <div class="ctx-menu-item warn" id="ctxArchive">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            Archive
+        </div>
+        <div class="ctx-menu-sep"></div>
+        <div class="ctx-menu-item danger" id="ctxDelete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            Delete…
+        </div>
+    `;
+    document.body.appendChild(menu);
+
+    // Dismiss on outside click or Escape
+    document.addEventListener('mousedown', e => {
+        if (!menu.contains(e.target)) hideCtxMenu();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') hideCtxMenu();
+    });
+
+    // Edit action — opens the habit edit modal (same as "···" button in detail panel)
+    menu.querySelector('#ctxEdit').addEventListener('click', () => {
+        const habit = _ctxHabit;
+        hideCtxMenu();
+        if (habit) openHabitModal(habit);
+    });
+
+    // Archive action
+    menu.querySelector('#ctxArchive').addEventListener('click', async () => {
+        const habit = _ctxHabit;
+        hideCtxMenu();
+        if (!habit) return;
+        try {
+            await api.put(`/api/v1/habits/${habit.id}`, { status: 'archive' });
+            allHabits = allHabits.filter(h => h.id !== habit.id);
+            renderHabitList();
+            toast('Habit archived');
+        } catch (err) {
+            toast(err.message || 'Failed to archive', 'error');
+        }
+    });
+
+    // Delete action
+    menu.querySelector('#ctxDelete').addEventListener('click', () => {
+        const habit = _ctxHabit;
+        hideCtxMenu();
+        if (!habit) return;
+        const confirmed = window.confirm(`Delete "${habit.name}" permanently? This cannot be undone.`);
+        if (!confirmed) return;
+        api.delete(`/api/v1/habits/${habit.id}`)
+            .then(() => {
+                allHabits = allHabits.filter(h => h.id !== habit.id);
+                renderHabitList();
+                toast('Habit deleted');
+            })
+            .catch(err => toast(err.message || 'Failed to delete', 'error'));
+    });
+}
+
+function showCtxMenu(e, habit) {
+    e.preventDefault();
+    _ctxHabit = habit;
+    const menu = document.getElementById('habitCtxMenu');
+    if (!menu) return;
+    // Position at cursor, keeping within viewport
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const mw = 170, mh = 130;
+    let x = e.clientX, y = e.clientY;
+    if (x + mw > vw) x = vw - mw - 8;
+    if (y + mh > vh) y = vh - mh - 8;
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
+    menu.classList.add('open');
+}
+
+function hideCtxMenu() {
+    document.getElementById('habitCtxMenu')?.classList.remove('open');
+    _ctxHabit = null;
+}
+
 // ── Initialise ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('habitList')) return;
 
     refreshHabits();
     wireDetailMore();
+    initContextMenu();
 
     document.getElementById('addBtn')?.addEventListener('click', () => openHabitModal(null));
     document.getElementById('activeDayClear')?.addEventListener('click', () => {
