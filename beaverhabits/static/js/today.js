@@ -1,5 +1,5 @@
 // beaverhabits/static/js/today.js — Daily task list
-import { api } from '/static/js/api.js';
+import { api, toast } from '/static/js/api.js';
 import { buildIconEl, applyIcons } from '/static/js/icons.js';
 
 // ── Date helpers ─────────────────────────────────────────────
@@ -21,7 +21,6 @@ function fmtDisplay(iso) {
 const TODAY = localIso();
 
 // ── Storage keys ──────────────────────────────────────────────
-const tasksKey  = iso => `hl-today-tasks-${iso}`;
 const PINNED_KEY = 'hl-today-pinned';
 
 // ── State ─────────────────────────────────────────────────────
@@ -30,14 +29,7 @@ let pinnedIds  = [];
 let viewDay    = TODAY;   // ISO of the day currently being viewed
 let taskItems  = [];      // tasks for viewDay
 
-// ── Persistence ───────────────────────────────────────────────
-function loadTasks(iso) {
-    try { return JSON.parse(localStorage.getItem(tasksKey(iso)) || '[]'); }
-    catch { return []; }
-}
-function saveTasks() {
-    localStorage.setItem(tasksKey(viewDay), JSON.stringify(taskItems));
-}
+// ── Pinned persistence (stays in localStorage — device UI pref) ──
 function loadPinned() {
     try { return JSON.parse(localStorage.getItem(PINNED_KEY) || '[]'); }
     catch { return []; }
@@ -46,29 +38,19 @@ function savePinned() {
     localStorage.setItem(PINNED_KEY, JSON.stringify(pinnedIds));
 }
 
-// ── Carry-forward (today only) ────────────────────────────────
-function collectCarriedOver() {
-    if (viewDay !== TODAY) return;
-    const seenIds = new Set(taskItems.map(t => t.id));
-    for (let i = 1; i <= 14; i++) {
-        const iso = isoAddDays(TODAY, -i);
-        try {
-            const past = JSON.parse(localStorage.getItem(tasksKey(iso)) || '[]');
-            for (const t of past) {
-                if (!t.done && !seenIds.has(t.id)) {
-                    taskItems.push({ ...t, carriedFrom: iso });
-                    seenIds.add(t.id);
-                }
-            }
-        } catch {}
-    }
+// ── Task API ──────────────────────────────────────────────────
+async function fetchTasks(iso, carry = false) {
+    return await api.get(`/api/v1/tasks?date=${iso}${carry ? '&carry=true' : ''}`);
 }
 
 // ── Switch viewing day ────────────────────────────────────────
-function switchDay(iso) {
-    viewDay   = iso;
-    taskItems = loadTasks(iso);
-    if (iso === TODAY) collectCarriedOver();
+async function switchDay(iso) {
+    viewDay = iso;
+    try {
+        taskItems = await fetchTasks(iso, iso === TODAY);
+    } catch {
+        taskItems = [];
+    }
     render();
 }
 
@@ -274,13 +256,26 @@ function makeAddRow() {
     row.className = 'today-add-row';
     row.innerHTML = `<span class="today-add-plus">+</span><input class="today-add-input" placeholder="Add task for today…" type="text">`;
     const inp = row.querySelector('input');
-    inp.addEventListener('keydown', e => {
+    inp.addEventListener('keydown', async e => {
         if (e.key === 'Enter' && inp.value.trim()) {
-            taskItems.push({ id: crypto.randomUUID(), text: inp.value.trim(), done: false });
-            saveTasks();
+            const text = inp.value.trim();
             inp.value = '';
+            // Optimistic: push a temp task immediately
+            const tempId = crypto.randomUUID();
+            taskItems.push({ id: tempId, text, done: false });
             render();
             setTimeout(() => document.querySelector('.today-add-input')?.focus(), 0);
+            try {
+                const created = await api.post('/api/v1/tasks', { text, date: viewDay });
+                // Replace temp with server-assigned task (real id)
+                const idx = taskItems.findIndex(t => t.id === tempId);
+                if (idx !== -1) taskItems[idx] = created;
+                render();
+            } catch {
+                taskItems = taskItems.filter(t => t.id !== tempId);
+                render();
+                toast('Failed to add task', 'error');
+            }
         }
         if (e.key === 'Escape') inp.blur();
     });
@@ -360,18 +355,36 @@ async function toggleSg(h, sgId) {
     } catch {}
 }
 
-function toggleTask(id) {
+async function toggleTask(id) {
     const t = taskItems.find(x => x.id === id);
-    if (t) { t.done = !t.done; saveTasks(); render(); }
+    if (!t) return;
+    const prev = t.done;
+    t.done = !prev;        // optimistic
+    render();
+    try {
+        const updated = await api.patch(`/api/v1/tasks/${id}`, { done: t.done });
+        t.done = updated.done; // confirm server value
+        render();
+    } catch {
+        t.done = prev;     // revert
+        render();
+        toast('Failed to update task', 'error');
+    }
 }
 
-function deleteTask(id, wrapEl) {
-    taskItems = taskItems.filter(t => t.id !== id);
-    saveTasks();
-    // Animate out before full re-render
+async function deleteTask(id, wrapEl) {
+    const prev = [...taskItems];
+    taskItems = taskItems.filter(t => t.id !== id); // optimistic
     wrapEl.style.transition = 'opacity .18s';
     wrapEl.style.opacity = '0';
     setTimeout(render, 200);
+    try {
+        await api.delete(`/api/v1/tasks/${id}`);
+    } catch {
+        taskItems = prev;  // revert
+        render();
+        toast('Failed to delete task', 'error');
+    }
 }
 
 function attachSwipe(wrap, inner, delBtn, onDelete) {
@@ -421,6 +434,24 @@ function attachSwipe(wrap, inner, delBtn, onDelete) {
         isOpen = false;
         onDelete();
     });
+}
+
+// ── Silent refresh (cross-device sync) ───────────────────────
+let _lastRefresh = 0;
+function silentRefresh() {
+    const now = Date.now();
+    if (now - _lastRefresh < 3000) return; // at most once per 3s
+    _lastRefresh = now;
+    (async () => {
+        try {
+            const fresh = await fetchTasks(viewDay, viewDay === TODAY);
+            // Only re-render if something actually changed
+            if (JSON.stringify(fresh) !== JSON.stringify(taskItems)) {
+                taskItems = fresh;
+                render();
+            }
+        } catch { /* silently ignore — stale data is fine */ }
+    })();
 }
 
 // ── Sortable ──────────────────────────────────────────────────
@@ -588,17 +619,19 @@ function renderStatsPanel() {
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     pinnedIds = loadPinned();
-    taskItems = loadTasks(TODAY);
-    collectCarriedOver();
-    saveTasks();
 
-    try {
-        allHabits = await api.get('/api/v1/habits');
-        if (pinnedIds.length === 0 && allHabits.length > 0) {
-            pinnedIds = allHabits.map(h => h.id);
-            savePinned();
-        }
-    } catch { allHabits = []; }
+    // Fetch tasks and habits in parallel
+    const [tasksResult, habitsResult] = await Promise.allSettled([
+        fetchTasks(TODAY, true),
+        api.get('/api/v1/habits'),
+    ]);
+    taskItems = tasksResult.status === 'fulfilled' ? tasksResult.value : [];
+    allHabits = habitsResult.status === 'fulfilled' ? habitsResult.value : [];
+
+    if (pinnedIds.length === 0 && allHabits.length > 0) {
+        pinnedIds = allHabits.map(h => h.id);
+        savePinned();
+    }
 
     // Nav arrows
     document.getElementById('todayPrevBtn').addEventListener('click', () => {
@@ -607,6 +640,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('todayNextBtn').addEventListener('click', () => {
         if (viewDay < TODAY) switchDay(isoAddDays(viewDay, 1));
     });
+
+    // Cross-device sync: re-fetch tasks whenever tab/window regains focus
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') silentRefresh();
+    });
+    window.addEventListener('focus', silentRefresh);
 
     render();
     initSortable();
