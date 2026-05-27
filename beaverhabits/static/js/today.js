@@ -18,6 +18,25 @@ function isoLabel(iso) {
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+function fullDateLabel(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+// Returns Mon–Sun ISO dates for the week containing `referenceIso`
+function getWeekDays(referenceIso) {
+    const d = new Date(referenceIso + 'T00:00:00');
+    const dow = d.getDay(); // 0=Sun, 1=Mon, …
+    const mondayOffset = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + mondayOffset);
+    return Array.from({ length: 7 }, (_, i) => {
+        const day = new Date(monday);
+        day.setDate(monday.getDate() + i);
+        return localIso(day);
+    });
+}
+
 // ── State ──────────────────────────────────────────────────────────────────────
 const TODAY = localIso();
 let viewDay = TODAY;
@@ -45,9 +64,22 @@ async function loadAll() {
     render();
 }
 
+// ── Shared stats helper ────────────────────────────────────────────────────────
+function computeStats(day) {
+    const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
+    const habitsDone = pinned.filter(h => {
+        const rec = h.records.find(r => r.day === day);
+        return rec && rec.done;
+    }).length;
+    const tasksDone = taskItems.filter(t => t.done).length;
+    const total = pinned.length + taskItems.length;
+    const done = habitsDone + tasksDone;
+    return { pinned, done, total };
+}
+
 // ── Render ─────────────────────────────────────────────────────────────────────
 function render() {
-    renderDateNav();
+    renderHeader();
     renderProgress();
     renderHabitPins();
     renderTaskList();
@@ -56,34 +88,46 @@ function render() {
     renderStatsPanel();
 }
 
-function renderDateNav() {
+// Header: ← Today — weekday, day month → | N / M done
+function renderHeader() {
     const el = document.getElementById('todayDateNav');
     if (!el) return;
     el.innerHTML = '';
 
+    const { done, total } = computeStats(viewDay);
+
+    const header = document.createElement('div');
+    header.className = 'tl-header';
+
     const prevBtn = document.createElement('button');
-    prevBtn.className = 'today-nav-btn';
+    prevBtn.className = 'tl-nav-btn';
     prevBtn.textContent = '←';
     prevBtn.addEventListener('click', () => navigateDay(-1));
 
     const label = document.createElement('span');
-    label.className = 'today-date-label';
-    label.textContent = viewDay === TODAY ? 'Today' : isoLabel(viewDay);
+    label.className = 'tl-date';
+    label.textContent = viewDay === TODAY
+        ? `Today — ${fullDateLabel(viewDay)}`
+        : fullDateLabel(viewDay);
 
     const nextBtn = document.createElement('button');
-    nextBtn.className = 'today-nav-btn';
+    nextBtn.className = 'tl-nav-btn';
     nextBtn.textContent = '→';
     nextBtn.disabled = viewDay === TODAY;
     nextBtn.addEventListener('click', () => navigateDay(1));
 
-    el.append(prevBtn, label, nextBtn);
+    const countEl = document.createElement('span');
+    countEl.className = 'tl-done-count';
+    countEl.textContent = `${done} / ${total} done`;
 
-    // Remove existing banner if present
-    document.querySelector('.today-past-banner')?.remove();
+    header.append(prevBtn, label, nextBtn, countEl);
+    el.appendChild(header);
 
+    // Past-day banner
+    document.querySelector('.tl-past-banner')?.remove();
     if (viewDay !== TODAY) {
         const banner = document.createElement('div');
-        banner.className = 'today-past-banner';
+        banner.className = 'tl-past-banner';
         const link = document.createElement('a');
         link.href = '#';
         link.textContent = 'Jump to today';
@@ -96,14 +140,7 @@ function renderDateNav() {
 function renderProgress() {
     const fill = document.getElementById('todayProgressFill');
     if (!fill) return;
-    const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
-    const habitsDone = pinned.filter(h => {
-        const rec = h.records.find(r => r.day === viewDay);
-        return rec && rec.done;
-    }).length;
-    const tasksDone = taskItems.filter(t => t.done).length;
-    const total = pinned.length + taskItems.length;
-    const done = habitsDone + tasksDone;
+    const { done, total } = computeStats(viewDay);
     fill.style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
 }
 
@@ -113,55 +150,68 @@ function renderHabitPins() {
     el.innerHTML = '';
 
     const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
+    if (pinned.length === 0) return;
 
-    if (pinned.length > 0) {
-        const header = document.createElement('div');
-        header.className = 'today-section-header';
-        header.textContent = 'Habits';
-        el.appendChild(header);
+    const sectionLabel = document.createElement('div');
+    sectionLabel.className = 'tl-section-label';
+    sectionLabel.textContent = 'Habits';
+    el.appendChild(sectionLabel);
 
-        pinned.forEach(h => {
-            const rec = h.records.find(r => r.day === viewDay);
-            const isDone = rec && rec.done;
-            const hasSg = h.sub_goals && h.sub_goals.length > 0;
+    pinned.forEach(h => {
+        const rec = h.records.find(r => r.day === viewDay);
+        const isDone = rec && rec.done;
+        const hasSg = h.sub_goals && h.sub_goals.length > 0;
 
-            const row = document.createElement('div');
-            row.className = 'task-row habit-pin-row' + (_inflight > 0 ? ' busy' : '') + (isDone ? ' done' : '');
+        // Habit row
+        const row = document.createElement('div');
+        row.className = 'tl-habit-row' + (_inflight > 0 ? ' busy' : '') + (isDone ? ' done' : '');
 
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.className = 'task-cb';
-            cb.checked = isDone;
-            cb.disabled = _inflight > 0;
-            cb.addEventListener('change', () => toggleHabit(h));
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'tl-circle';
+        cb.checked = isDone;
+        cb.disabled = _inflight > 0;
+        cb.addEventListener('change', () => toggleHabit(h));
 
-            const iconEl = buildIconEl(h.icon || '📌', 16);
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'tl-habit-icon';
+        iconWrap.appendChild(buildIconEl(h.icon || '📌', 14));
 
-            const name = document.createElement('span');
-            name.className = 'task-text';
-            name.textContent = h.name;
+        const name = document.createElement('span');
+        name.className = 'tl-habit-name';
+        name.textContent = h.name;
 
-            row.append(cb, iconEl, name);
-            el.appendChild(row);
+        // Badge: "N/M" for sub-goal habits, "habit" otherwise
+        const badge = document.createElement('span');
+        if (hasSg) {
+            const doneSgs = rec?.sub_goals_done?.length || 0;
+            badge.className = 'tl-habit-badge' + (doneSgs > 0 ? ' sg-badge' : '');
+            badge.textContent = `${doneSgs}/${h.sub_goals.length}`;
+        } else {
+            badge.className = 'tl-habit-badge';
+            badge.textContent = 'habit';
+        }
 
-            if (hasSg) {
-                const pills = document.createElement('div');
-                pills.className = 'sg-pills';
-                h.sub_goals.forEach(sg => {
-                    const sgDone = rec?.sub_goals_done?.includes(sg.id);
-                    const pill = document.createElement('button');
-                    pill.className = 'sg-pill' + (sgDone ? ' done' : '');
-                    pill.textContent = sg.name;
-                    pill.disabled = _inflight > 0;
-                    pill.addEventListener('click', () => toggleSg(h, sg.id));
-                    pills.appendChild(pill);
-                });
-                el.appendChild(pills);
-            }
-        });
-        applyIcons();
-    }
+        row.append(cb, iconWrap, name, badge);
+        el.appendChild(row);
 
+        // Sub-goal pills
+        if (hasSg) {
+            const pills = document.createElement('div');
+            pills.className = 'tl-sg-pills';
+            h.sub_goals.forEach(sg => {
+                const sgDone = rec?.sub_goals_done?.includes(sg.id);
+                const pill = document.createElement('button');
+                pill.className = 'tl-sg-pill' + (sgDone ? ' done' : '');
+                pill.textContent = sg.name;
+                pill.disabled = _inflight > 0;
+                pill.addEventListener('click', () => toggleSg(h, sg.id));
+                pills.appendChild(pill);
+            });
+            el.appendChild(pills);
+        }
+    });
+    applyIcons();
 }
 
 function renderTaskList() {
@@ -170,25 +220,25 @@ function renderTaskList() {
     el.innerHTML = '';
 
     if (taskItems.length > 0) {
-        const header = document.createElement('div');
-        header.className = 'today-section-header';
-        header.textContent = 'Tasks';
-        el.appendChild(header);
+        const sectionLabel = document.createElement('div');
+        sectionLabel.className = 'tl-section-label';
+        sectionLabel.textContent = 'Tasks';
+        el.appendChild(sectionLabel);
     }
 
     taskItems.forEach(t => {
         const row = document.createElement('div');
-        row.className = 'task-row' + (_inflight > 0 ? ' busy' : '') + (t.done ? ' done' : '');
+        row.className = 'tl-task-row' + (_inflight > 0 ? ' busy' : '') + (t.done ? ' done' : '');
 
         const cb = document.createElement('input');
         cb.type = 'checkbox';
-        cb.className = 'task-cb';
+        cb.className = 'tl-task-cb';
         cb.checked = t.done;
         cb.disabled = _inflight > 0;
         cb.addEventListener('change', () => toggleTask(t.id));
 
         const text = document.createElement('span');
-        text.className = 'task-text';
+        text.className = 'tl-task-name';
         text.textContent = t.carriedFrom
             ? `${t.text} ↑ ${isoLabel(t.carriedFrom)}`
             : t.text;
@@ -197,7 +247,7 @@ function renderTaskList() {
 
         if (viewDay === TODAY) {
             const delBtn = document.createElement('button');
-            delBtn.className = 'task-del-btn';
+            delBtn.className = 'tl-task-del';
             delBtn.textContent = '×';
             delBtn.addEventListener('click', () => deleteTask(t.id));
             row.appendChild(delBtn);
@@ -213,16 +263,61 @@ function renderAddRow() {
     el.innerHTML = '';
     if (viewDay !== TODAY) return;
 
+    const row = document.createElement('div');
+    row.className = 'tl-add-row';
+
+    const plus = document.createElement('span');
+    plus.className = 'tl-add-plus';
+    plus.textContent = '+';
+
     const inp = document.createElement('input');
     inp.type = 'text';
-    inp.className = 'today-add-input';
+    inp.className = 'tl-add-input';
     inp.placeholder = 'Add task for today…';
     inp.addEventListener('keydown', e => {
         if (e.key === 'Enter' && inp.value.trim()) {
             addTask(inp.value.trim());
         }
     });
-    el.appendChild(inp);
+
+    row.append(plus, inp);
+    el.appendChild(row);
+}
+
+function renderPinControl() {
+    const el = document.getElementById('todayPinControl');
+    if (!el) return;
+    el.innerHTML = '';
+    if (allHabits.length === 0) return;
+
+    const divider = document.createElement('div');
+    divider.className = 'tl-divider';
+    el.appendChild(divider);
+
+    const label = document.createElement('div');
+    label.className = 'tl-pin-label';
+    label.textContent = 'Pin habits to today';
+    el.appendChild(label);
+
+    allHabits.forEach(h => {
+        const row = document.createElement('label');
+        row.className = 'tl-pin-row';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = pinnedIds.includes(h.id);
+        cb.addEventListener('change', () => togglePin(h.id));
+
+        const iconWrap = document.createElement('span');
+        iconWrap.appendChild(buildIconEl(h.icon || '📌', 13));
+
+        const name = document.createElement('span');
+        name.textContent = h.name;
+
+        row.append(cb, iconWrap, name);
+        el.appendChild(row);
+    });
+    applyIcons();
 }
 
 function renderStatsPanel() {
@@ -232,42 +327,44 @@ function renderStatsPanel() {
     if (viewDay !== TODAY) return;
 
     const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
-    const habitsDone = pinned.filter(h => {
-        const rec = h.records.find(r => r.day === TODAY);
-        return rec && rec.done;
-    }).length;
-    const tasksDone = taskItems.filter(t => t.done).length;
-    const total = pinned.length + taskItems.length;
-    const done = habitsDone + tasksDone;
+    const { done, total } = computeStats(TODAY);
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-    // Progress cards
-    const grid = document.createElement('div');
-    grid.className = 'stats-cards';
+    // ── TODAY'S PROGRESS ──
+    const progLabel = document.createElement('div');
+    progLabel.className = 'tr-section-label';
+    progLabel.textContent = "Today's Progress";
+    el.appendChild(progLabel);
+
+    const cards = document.createElement('div');
+    cards.className = 'tr-progress-cards';
     [
-        { label: 'Done', value: done },
-        { label: 'Left', value: total - done },
+        { label: 'Done',   value: done },
+        { label: 'Left',   value: total - done },
         { label: '% Done', value: `${pct}%` },
     ].forEach(c => {
         const card = document.createElement('div');
-        card.className = 'stats-card';
+        card.className = 'tr-card';
         const val = document.createElement('div');
-        val.className = 'stats-card-value';
+        val.className = 'tr-card-value';
         val.textContent = c.value;
         const lbl = document.createElement('div');
-        lbl.className = 'stats-card-label';
+        lbl.className = 'tr-card-label';
         lbl.textContent = c.label;
         card.append(val, lbl);
-        grid.appendChild(card);
+        cards.appendChild(card);
     });
-    el.appendChild(grid);
+    el.appendChild(cards);
 
-    // Habit streaks
+    // ── HABIT STREAKS ──
     if (pinned.length > 0) {
-        const hdr = document.createElement('div');
-        hdr.className = 'stats-section-header';
-        hdr.textContent = 'Habit streaks';
-        el.appendChild(hdr);
+        const streakLabel = document.createElement('div');
+        streakLabel.className = 'tr-section-label';
+        streakLabel.textContent = 'Habit Streaks';
+        el.appendChild(streakLabel);
+
+        const streakSection = document.createElement('div');
+        streakSection.className = 'tr-streak-section';
 
         pinned.forEach(h => {
             const doneSet = new Set(h.records.filter(r => r.done).map(r => r.day));
@@ -278,53 +375,81 @@ function renderStatsPanel() {
             }
 
             const row = document.createElement('div');
-            row.className = 'streak-row';
-            const iconEl = buildIconEl(h.icon || '📌', 14);
+            row.className = 'tr-streak-row';
+
+            const iconWrap = document.createElement('span');
+            iconWrap.appendChild(buildIconEl(h.icon || '📌', 13));
+
             const name = document.createElement('span');
-            name.className = 'streak-name';
+            name.className = 'tr-streak-name';
             name.textContent = h.name;
-            const flame = document.createElement('span');
-            flame.className = 'streak-count';
-            flame.textContent = `🔥 ${streak}`;
-            row.append(iconEl, name, flame);
-            el.appendChild(row);
+
+            const count = document.createElement('span');
+            count.className = 'tr-streak-count' + (streak === 0 ? ' zero' : '');
+            count.textContent = streak === 0 ? '— 0' : `🔥 ${streak}`;
+
+            row.append(iconWrap, name, count);
+            streakSection.appendChild(row);
         });
+        el.appendChild(streakSection);
         applyIcons();
     }
-}
 
-function renderPinControl() {
-    const el = document.getElementById('todayPinControl');
-    if (!el) return;
-    el.innerHTML = '';
-    if (allHabits.length === 0) return;
+    // ── THIS WEEK ──
+    const weekLabel = document.createElement('div');
+    weekLabel.className = 'tr-section-label';
+    weekLabel.textContent = 'This Week';
+    el.appendChild(weekLabel);
 
-    const pinSection = document.createElement('details');
-    pinSection.className = 'pin-section';
-    const summary = document.createElement('summary');
-    summary.textContent = `Pin habits to today (${pinnedIds.length}/${allHabits.length})`;
-    pinSection.appendChild(summary);
+    const weekDays = getWeekDays(TODAY);
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const MAX_BAR_H = 56; // px
 
-    allHabits.forEach(h => {
-        const row = document.createElement('label');
-        row.className = 'pin-habit-row';
+    const barsRow = document.createElement('div');
+    barsRow.className = 'tr-week-bars';
 
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = pinnedIds.includes(h.id);
-        cb.addEventListener('change', () => togglePin(h.id));
+    const labelsRow = document.createElement('div');
+    labelsRow.className = 'tr-week-labels';
 
-        const iconEl = buildIconEl(h.icon || '📌', 14);
+    weekDays.forEach((iso, i) => {
+        const isToday  = iso === TODAY;
+        const isFuture = iso > TODAY;
 
-        const name = document.createElement('span');
-        name.textContent = h.name;
+        // % of pinned habits done that day
+        let ratio = 0;
+        if (!isFuture && pinned.length > 0) {
+            const dayDone = pinned.filter(h => {
+                const rec = h.records.find(r => r.day === iso);
+                return rec && rec.done;
+            }).length;
+            ratio = dayDone / pinned.length;
+        }
 
-        row.append(cb, iconEl, name);
-        pinSection.appendChild(row);
+        const barCol = document.createElement('div');
+        barCol.className = 'tr-week-bar-col';
+
+        const bar = document.createElement('div');
+        const heightPx = isFuture ? 3 : Math.max(3, Math.round(ratio * MAX_BAR_H));
+        bar.style.height = `${heightPx}px`;
+        if (isToday) {
+            bar.className = 'tr-week-bar today-bar';
+        } else if (ratio > 0) {
+            bar.className = 'tr-week-bar done-bar';
+        } else {
+            bar.className = 'tr-week-bar';
+        }
+
+        barCol.appendChild(bar);
+        barsRow.appendChild(barCol);
+
+        const lbl = document.createElement('div');
+        lbl.className = 'tr-week-lbl' + (isToday ? ' today-lbl' : '');
+        lbl.textContent = dayNames[i];
+        labelsRow.appendChild(lbl);
     });
 
-    el.appendChild(pinSection);
-    applyIcons();
+    el.appendChild(barsRow);
+    el.appendChild(labelsRow);
 }
 
 // ── Day navigation ─────────────────────────────────────────────────────────────
@@ -458,7 +583,7 @@ async function toggleSg(h, sgId) {
     }
 }
 
-// Pin toggle: update memory first (preference, not critical), then persist
+// Pin toggle: update memory first, then persist
 async function togglePin(habitId) {
     if (pinnedIds.includes(habitId)) {
         pinnedIds = pinnedIds.filter(id => id !== habitId);
@@ -473,7 +598,7 @@ async function togglePin(habitId) {
     }
 }
 
-// ── Silent refresh — syncs tasks across devices ────────────────────────────────
+// ── Silent refresh ─────────────────────────────────────────────────────────────
 function silentRefresh() {
     if (_inflight > 0 || Date.now() - _lastRefresh < 3000) return;
     _lastRefresh = Date.now();
