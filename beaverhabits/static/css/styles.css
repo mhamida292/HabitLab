@@ -1227,5 +1227,323 @@ textarea.finp { resize: vertical; min-height: 80px; }
 }
 .ctx-menu-item:hover { background: var(--bg-elevated); }
 .ctx-menu-item.danger { color: #ef4444; }
+
+/* ── Today Tab ──────────────────────────────────────────────────────────────── */
+
+.today-wrap {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+.today-list-col {
+    width: 420px;
+    min-width: 280px;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+}
+
+.today-stats-col {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+/* Hide stats column on mobile */
+@media (max-width: 700px) {
+    .today-list-col {
+        width: 100%;
+        border-right: none;
+    }
+    .today-stats-col {
+        display: none;
+    }
+}
+
+/* Date nav */
+.today-date-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.today-nav-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.25rem 0.6rem;
+    line-height: 1;
+}
+
+.today-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.today-nav-btn:hover:not(:disabled) {
+    background: var(--bg-input);
+}
+
+.today-date-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+/* Past day banner */
+.today-past-banner {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.today-past-banner a {
+    color: var(--accent-light);
+    text-decoration: none;
+}
+
+.today-past-banner a:hover {
+    text-decoration: underline;
+}
+
+/* Progress bar */
+.today-progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+
+.today-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* Section headers */
+.today-section-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0.75rem 0 0.4rem;
+}
+
+/* Task rows */
+.task-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.25rem;
+    border-radius: 6px;
+    transition: opacity 0.15s;
+}
+
+.task-row:hover {
+    background: var(--bg-elevated);
+}
+
+.task-row.busy {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.task-row.done .task-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.task-cb {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.task-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.task-del-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.task-row:hover .task-del-btn {
+    opacity: 1;
+}
+
+.task-del-btn:hover {
+    color: var(--danger);
+}
+
+/* Habit pin rows */
+.habit-pin-row {
+    cursor: pointer;
+}
+
+/* Sub-goal pills */
+.sg-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0.25rem 0 0.5rem 2.2rem;
+}
+
+.sg-pill {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.7rem;
+    transition: background 0.15s, color 0.15s;
+}
+
+.sg-pill.done {
+    background: var(--accent-sel);
+    border-color: var(--accent);
+    color: var(--accent-light);
+}
+
+/* Add task input */
+.today-add-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.today-add-input:focus {
+    border-color: var(--accent);
+}
+
+.today-add-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Pin section */
+.pin-section {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+}
+
+.pin-section summary {
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    list-style: none;
+    user-select: none;
+}
+
+.pin-section summary:hover {
+    color: var(--text-secondary);
+}
+
+.pin-habit-row {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.35rem 0.25rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    border-radius: 5px;
+}
+
+.pin-habit-row:hover {
+    background: var(--bg-elevated);
+}
+
+/* Stats panel */
+.stats-cards {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.stats-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    flex: 1;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.stats-card-value {
+    color: var(--text-primary);
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stats-card-label {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    margin-top: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.stats-section-header {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+}
+
+.streak-row {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+    font-size: 0.85rem;
+}
+
+.streak-name {
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.streak-count {
+    color: var(--streak);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
 .ctx-menu-item.warn   { color: #f59e0b; }
 .ctx-menu-sep { height: 1px; background: var(--border); margin: 3px 0; }
