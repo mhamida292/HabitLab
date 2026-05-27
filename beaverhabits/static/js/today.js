@@ -52,6 +52,7 @@ function render() {
     renderHabitPins();
     renderTaskList();
     renderAddRow();
+    renderPinControl();
     renderStatsPanel();
 }
 
@@ -161,33 +162,6 @@ function renderHabitPins() {
         applyIcons();
     }
 
-    // Pin habits section
-    const pinSection = document.createElement('details');
-    pinSection.className = 'pin-section';
-    const summary = document.createElement('summary');
-    summary.textContent = `Pin habits to today${allHabits.length > 0 ? ` (${pinnedIds.length}/${allHabits.length})` : ''}`;
-    pinSection.appendChild(summary);
-
-    allHabits.forEach(h => {
-        const row = document.createElement('label');
-        row.className = 'pin-habit-row';
-
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = pinnedIds.includes(h.id);
-        cb.addEventListener('change', () => togglePin(h.id));
-
-        const iconEl = buildIconEl(h.icon || '📌', 14);
-
-        const name = document.createElement('span');
-        name.textContent = h.name;
-
-        row.append(cb, iconEl, name);
-        pinSection.appendChild(row);
-    });
-
-    el.appendChild(pinSection);
-    applyIcons();
 }
 
 function renderTaskList() {
@@ -317,6 +291,40 @@ function renderStatsPanel() {
         });
         applyIcons();
     }
+}
+
+function renderPinControl() {
+    const el = document.getElementById('todayPinControl');
+    if (!el) return;
+    el.innerHTML = '';
+    if (allHabits.length === 0) return;
+
+    const pinSection = document.createElement('details');
+    pinSection.className = 'pin-section';
+    const summary = document.createElement('summary');
+    summary.textContent = `Pin habits to today (${pinnedIds.length}/${allHabits.length})`;
+    pinSection.appendChild(summary);
+
+    allHabits.forEach(h => {
+        const row = document.createElement('label');
+        row.className = 'pin-habit-row';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = pinnedIds.includes(h.id);
+        cb.addEventListener('change', () => togglePin(h.id));
+
+        const iconEl = buildIconEl(h.icon || '📌', 14);
+
+        const name = document.createElement('span');
+        name.textContent = h.name;
+
+        row.append(cb, iconEl, name);
+        pinSection.appendChild(row);
+    });
+
+    el.appendChild(pinSection);
+    applyIcons();
 }
 
 // ── Day navigation ─────────────────────────────────────────────────────────────
