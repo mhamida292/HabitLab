@@ -709,5 +709,74 @@ async def delete_note_route(
     return {"ok": True}
 
 
+# ── Tasks ─────────────────────────────────────────────────────────────────────
+
+class CreateTask(BaseModel):
+    text: str
+    date: str  # YYYY-MM-DD
+
+
+class UpdateTask(BaseModel):
+    done: bool | None = None
+    text: str | None = None
+
+
+@api_router.get("/tasks", tags=["tasks"])
+async def get_tasks(
+    date: str = Query(..., description="YYYY-MM-DD"),
+    carry: bool = Query(False),
+    habit_list: HabitList = Depends(current_habit_list),
+):
+    try:
+        datetime.date.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid date; use YYYY-MM-DD")
+    return habit_list.get_tasks(date, carry=carry)
+
+
+@api_router.post("/tasks", tags=["tasks"])
+async def post_task(
+    task: CreateTask,
+    user: User = Depends(current_active_user),
+):
+    try:
+        datetime.date.fromisoformat(task.date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid date; use YYYY-MM-DD")
+    if not task.text.strip():
+        raise HTTPException(status_code=422, detail="Task text cannot be empty")
+    habit_list = await _get_or_create_habit_list(user)
+    created = habit_list.add_task(task.text, task.date)
+    await _storage.save_user_habit_list(user, habit_list)
+    return created
+
+
+@api_router.patch("/tasks/{task_id}", tags=["tasks"])
+async def patch_task(
+    task_id: str,
+    task: UpdateTask,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    updated = habit_list.update_task(task_id, **task.model_dump(exclude_none=True))
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await _storage.save_user_habit_list(user, habit_list)
+    return updated
+
+
+@api_router.delete("/tasks/{task_id}", tags=["tasks"])
+async def delete_task_route(
+    task_id: str,
+    user: User = Depends(current_active_user),
+):
+    habit_list = await _get_or_create_habit_list(user)
+    deleted = habit_list.delete_task(task_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await _storage.save_user_habit_list(user, habit_list)
+    return {"ok": True}
+
+
 def init_api_routes(app: FastAPI) -> None:
     app.include_router(api_router, prefix="/api/v1")
