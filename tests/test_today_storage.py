@@ -100,6 +100,16 @@ def test_tasks_older_than_14_days_not_carried(hl):
     assert carried == []
 
 
+def test_tasks_exactly_14_days_old_are_carried(hl):
+    today = datetime.date.today().isoformat()
+    boundary = (datetime.date.today() - datetime.timedelta(days=14)).isoformat()
+    hl.add_task("Boundary task", boundary)
+
+    carried = hl.get_tasks(today, carry=True)
+    assert len(carried) == 1
+    assert carried[0]["carriedFrom"] == boundary
+
+
 def test_carry_does_not_duplicate_todays_tasks(hl):
     today = datetime.date.today().isoformat()
     task = hl.add_task("Today task", today)

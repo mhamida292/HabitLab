@@ -435,7 +435,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
 
     @property
     def today_pinned(self) -> list[str]:
-        return self.data.setdefault("today_pinned", [])
+        return list(self.data.setdefault("today_pinned", []))
 
     @today_pinned.setter
     def today_pinned(self, value: list[str]) -> None:
@@ -484,7 +484,9 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         return None
 
     def delete_task(self, task_id: str) -> bool:
-        tasks = self.data.get("tasks", [])
+        if "tasks" not in self.data:
+            return False
+        tasks = self.data["tasks"]
         before = len(tasks)
         self.data["tasks"] = [t for t in tasks if t["id"] != task_id]
         return len(self.data["tasks"]) < before
