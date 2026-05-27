@@ -431,3 +431,61 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         self.data["notes"] = [n for n in notes if n["id"] != note_id]
         return len(self.data["notes"]) < before
 
+    # ── Today pinned ───────────────────────────────────────────────────────────
+
+    @property
+    def today_pinned(self) -> list[str]:
+        return self.data.setdefault("today_pinned", [])
+
+    @today_pinned.setter
+    def today_pinned(self, value: list[str]) -> None:
+        self.data["today_pinned"] = list(value)
+
+    # ── Tasks ──────────────────────────────────────────────────────────────────
+
+    def get_tasks(self, date: str, carry: bool = False) -> list[dict]:
+        tasks = self.data.setdefault("tasks", [])
+        result = [dict(t) for t in tasks if t["date"] == date]
+        if carry:
+            cutoff = (
+                datetime.date.fromisoformat(date) - datetime.timedelta(days=14)
+            ).isoformat()
+            today_ids = {t["id"] for t in result}
+            for t in tasks:
+                if (
+                    t["date"] < date
+                    and t["date"] >= cutoff
+                    and not t["done"]
+                    and t["id"] not in today_ids
+                ):
+                    carried = dict(t)
+                    carried["carriedFrom"] = t["date"]
+                    result.append(carried)
+        return result
+
+    def add_task(self, text: str, date: str) -> dict:
+        task: dict = {
+            "id": uuid.uuid4().hex[:8],
+            "text": text.strip(),
+            "done": False,
+            "date": date,
+        }
+        self.data.setdefault("tasks", []).append(task)
+        return dict(task)
+
+    def update_task(self, task_id: str, **fields) -> dict | None:
+        for task in self.data.get("tasks", []):
+            if task["id"] == task_id:
+                if "done" in fields:
+                    task["done"] = bool(fields["done"])
+                if "text" in fields and fields["text"] is not None:
+                    task["text"] = fields["text"].strip()
+                return dict(task)
+        return None
+
+    def delete_task(self, task_id: str) -> bool:
+        tasks = self.data.get("tasks", [])
+        before = len(tasks)
+        self.data["tasks"] = [t for t in tasks if t["id"] != task_id]
+        return len(self.data["tasks"]) < before
+
