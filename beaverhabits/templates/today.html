@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Today — HabitLab{% endblock %}
+{% block nav_today %}active{% endblock %}
+
+{% block panels %}
+<div class="today-wrap">
+
+    <div class="today-list-col">
+        <div id="todayDateNav" class="today-date-nav"></div>
+        <div class="today-progress-bar">
+            <div id="todayProgressFill" class="today-progress-fill"></div>
+        </div>
+        <div id="todayPins"></div>
+        <div id="todayList"></div>
+        <div id="todayAddRow"></div>
+    </div>
+
+    <div class="today-stats-col" id="todayStatsPanel"></div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="/static/js/today.js?v={{ asset_version }}"></script>
+{% endblock %}
