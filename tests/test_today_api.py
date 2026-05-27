@@ -124,3 +124,46 @@ async def test_done_tasks_not_carried(authed_client):
 
     resp = await authed_client.get(f"/api/v1/tasks?date={today}&carry=true")
     assert all(t["id"] != task_id for t in resp.json())
+
+
+@pytest.mark.asyncio
+async def test_get_habits_meta_includes_pinned_today_ids(authed_client):
+    resp = await authed_client.get("/api/v1/habits/meta")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "pinned_today_ids" in data
+    assert data["pinned_today_ids"] == []
+
+
+@pytest.mark.asyncio
+async def test_put_habits_meta_sets_pinned_today_ids(authed_client, habit):
+    resp = await authed_client.put(
+        "/api/v1/habits/meta", json={"pinned_today_ids": [habit["id"]]}
+    )
+    assert resp.status_code == 200
+
+    get = await authed_client.get("/api/v1/habits/meta")
+    assert habit["id"] in get.json()["pinned_today_ids"]
+
+
+@pytest.mark.asyncio
+async def test_put_habits_meta_order_unaffected_by_pinned_update(authed_client, habit):
+    # Set order first
+    await authed_client.put("/api/v1/habits/meta", json={"order": [habit["id"]]})
+    # Update only pins
+    await authed_client.put(
+        "/api/v1/habits/meta", json={"pinned_today_ids": [habit["id"]]}
+    )
+    get = await authed_client.get("/api/v1/habits/meta")
+    assert get.json()["order"] == [habit["id"]]
+    assert get.json()["pinned_today_ids"] == [habit["id"]]
+
+
+@pytest.mark.asyncio
+async def test_put_habits_meta_can_clear_pinned(authed_client, habit):
+    await authed_client.put(
+        "/api/v1/habits/meta", json={"pinned_today_ids": [habit["id"]]}
+    )
+    await authed_client.put("/api/v1/habits/meta", json={"pinned_today_ids": []})
+    get = await authed_client.get("/api/v1/habits/meta")
+    assert get.json()["pinned_today_ids"] == []
