@@ -1035,7 +1035,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
 }
 
 .today-list-col {
-    width: 260px;
+    width: 300px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -1101,12 +1101,12 @@ textarea.finp { resize: vertical; min-height: 80px; }
     white-space: nowrap;
 }
 
-/* Progress bar */
+/* Progress bar — edge to edge */
 .today-progress-bar {
     height: 3px;
     background: var(--border);
-    margin: 0 14px 8px;
-    border-radius: 2px;
+    margin: 0 0 8px;
+    border-radius: 0;
     overflow: hidden;
 }
 
@@ -1149,27 +1149,43 @@ textarea.finp { resize: vertical; min-height: 80px; }
 .tl-habit-row.busy { opacity: 0.5; pointer-events: none; }
 .tl-habit-row.done .tl-habit-name { color: var(--text-muted); text-decoration: line-through; }
 
-/* Circular checkbox */
-.tl-circle {
+/* Custom habit circle: shows habit icon inside when unchecked, checkmark when done */
+.tl-habit-circle {
     flex-shrink: 0;
-    width: 20px;
-    height: 20px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    border: 2px solid var(--border);
+    border: 1.5px solid var(--border);
     background: transparent;
     cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.tl-habit-circle:hover { border-color: var(--accent); color: var(--accent-light); }
+.tl-habit-circle.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Custom task circle: plain circle, no icon inside */
+.tl-task-circle {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    user-select: none;
     transition: border-color 0.15s, background 0.15s;
 }
-.tl-circle:checked {
-    background: var(--accent);
-    border-color: var(--accent);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6l3 3 5-5' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 10px 10px;
-}
+.tl-task-circle:hover { border-color: var(--accent); }
+.tl-task-circle.done { background: var(--accent); border-color: var(--accent); }
 
 .tl-habit-icon {
     flex-shrink: 0;
@@ -1194,17 +1210,12 @@ textarea.finp { resize: vertical; min-height: 80px; }
     flex-shrink: 0;
     font-size: 0.62rem;
     font-weight: 600;
-    padding: 2px 6px;
+    padding: 2px 7px;
     border-radius: 10px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    white-space: nowrap;
-}
-.tl-habit-badge.sg-badge {
     background: var(--accent-sel);
-    border-color: var(--accent);
+    border: 1px solid var(--accent);
     color: var(--accent-light);
+    white-space: nowrap;
 }
 
 /* Sub-goal pills */
@@ -1242,14 +1253,6 @@ textarea.finp { resize: vertical; min-height: 80px; }
 .tl-task-row:hover { background: var(--bg-elevated); }
 .tl-task-row.busy { opacity: 0.5; pointer-events: none; }
 .tl-task-row.done .tl-task-name { color: var(--text-muted); text-decoration: line-through; }
-
-.tl-task-cb {
-    flex-shrink: 0;
-    width: 15px;
-    height: 15px;
-    accent-color: var(--accent);
-    cursor: pointer;
-}
 
 .tl-task-name {
     flex: 1;
@@ -1378,9 +1381,11 @@ textarea.finp { resize: vertical; min-height: 80px; }
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 5px 0;
+    padding: 8px 0;
     font-size: 0.85rem;
+    border-bottom: 1px solid var(--border);
 }
+.tr-streak-row:last-child { border-bottom: none; }
 
 .tr-streak-name {
     flex: 1;

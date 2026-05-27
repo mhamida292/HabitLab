@@ -18,23 +18,29 @@ function isoLabel(iso) {
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function fullDateLabel(iso) {
+// "Tuesday, 26 May" style label for header
+function headerDateLabel(iso) {
     const d = new Date(iso + 'T00:00:00');
-    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
+    const day = d.getDate();
+    const month = d.toLocaleDateString('en-GB', { month: 'long' });
+    return `${weekday}, ${day} ${month}`;
 }
 
-// Returns Mon–Sun ISO dates for the week containing `referenceIso`
-function getWeekDays(referenceIso) {
-    const d = new Date(referenceIso + 'T00:00:00');
-    const dow = d.getDay(); // 0=Sun, 1=Mon, …
-    const mondayOffset = dow === 0 ? -6 : 1 - dow;
-    const monday = new Date(d);
-    monday.setDate(d.getDate() + mondayOffset);
-    return Array.from({ length: 7 }, (_, i) => {
-        const day = new Date(monday);
-        day.setDate(monday.getDate() + i);
-        return localIso(day);
-    });
+// Returns last 7 days ending on referenceIso (rolling window)
+function getLast7Days(referenceIso) {
+    return Array.from({ length: 7 }, (_, i) => isoAddDays(referenceIso, i - 6));
+}
+
+// Short day label (2 chars) from ISO
+function shortDay(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
+}
+
+// Checkmark SVG for done circles
+function checkmarkSvg(size) {
+    return `<svg viewBox="0 0 12 12" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l3 3 5-5"/></svg>`;
 }
 
 // ── State ──────────────────────────────────────────────────────────────────────
@@ -88,7 +94,7 @@ function render() {
     renderStatsPanel();
 }
 
-// Header: ← Today — weekday, day month → | N / M done
+// Header: ← Today — Weekday, D Month → | N / M done
 function renderHeader() {
     const el = document.getElementById('todayDateNav');
     if (!el) return;
@@ -107,8 +113,8 @@ function renderHeader() {
     const label = document.createElement('span');
     label.className = 'tl-date';
     label.textContent = viewDay === TODAY
-        ? `Today — ${fullDateLabel(viewDay)}`
-        : fullDateLabel(viewDay);
+        ? `Today — ${headerDateLabel(viewDay)}`
+        : headerDateLabel(viewDay);
 
     const nextBtn = document.createElement('button');
     nextBtn.className = 'tl-nav-btn';
@@ -152,47 +158,41 @@ function renderHabitPins() {
     const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
     if (pinned.length === 0) return;
 
-    const sectionLabel = document.createElement('div');
-    sectionLabel.className = 'tl-section-label';
-    sectionLabel.textContent = 'Habits';
-    el.appendChild(sectionLabel);
-
     pinned.forEach(h => {
         const rec = h.records.find(r => r.day === viewDay);
         const isDone = rec && rec.done;
         const hasSg = h.sub_goals && h.sub_goals.length > 0;
+        const busy = _inflight > 0;
 
-        // Habit row
+        // Habit row — clicking anywhere toggles
         const row = document.createElement('div');
-        row.className = 'tl-habit-row' + (_inflight > 0 ? ' busy' : '') + (isDone ? ' done' : '');
+        row.className = 'tl-habit-row' + (busy ? ' busy' : '') + (isDone ? ' done' : '');
+        row.addEventListener('click', () => { if (!busy) toggleHabit(h); });
 
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.className = 'tl-circle';
-        cb.checked = isDone;
-        cb.disabled = _inflight > 0;
-        cb.addEventListener('change', () => toggleHabit(h));
-
-        const iconWrap = document.createElement('span');
-        iconWrap.className = 'tl-habit-icon';
-        iconWrap.appendChild(buildIconEl(h.icon || '📌', 14));
+        // Custom circle: icon inside when unchecked, checkmark when done
+        const circle = document.createElement('div');
+        circle.className = 'tl-habit-circle' + (isDone ? ' done' : '');
+        if (isDone) {
+            circle.innerHTML = checkmarkSvg(11);
+        } else {
+            circle.appendChild(buildIconEl(h.icon || '📌', 13));
+        }
 
         const name = document.createElement('span');
         name.className = 'tl-habit-name';
         name.textContent = h.name;
 
-        // Badge: "N/M" for sub-goal habits, "habit" otherwise
+        // Badge: "N/M" for sub-goal habits, "habit" otherwise — always accent styled
         const badge = document.createElement('span');
+        badge.className = 'tl-habit-badge';
         if (hasSg) {
             const doneSgs = rec?.sub_goals_done?.length || 0;
-            badge.className = 'tl-habit-badge' + (doneSgs > 0 ? ' sg-badge' : '');
             badge.textContent = `${doneSgs}/${h.sub_goals.length}`;
         } else {
-            badge.className = 'tl-habit-badge';
             badge.textContent = 'habit';
         }
 
-        row.append(cb, iconWrap, name, badge);
+        row.append(circle, name, badge);
         el.appendChild(row);
 
         // Sub-goal pills
@@ -204,8 +204,8 @@ function renderHabitPins() {
                 const pill = document.createElement('button');
                 pill.className = 'tl-sg-pill' + (sgDone ? ' done' : '');
                 pill.textContent = sg.name;
-                pill.disabled = _inflight > 0;
-                pill.addEventListener('click', () => toggleSg(h, sg.id));
+                pill.disabled = busy;
+                pill.addEventListener('click', e => { e.stopPropagation(); toggleSg(h, sg.id); });
                 pills.appendChild(pill);
             });
             el.appendChild(pills);
@@ -219,23 +219,19 @@ function renderTaskList() {
     if (!el) return;
     el.innerHTML = '';
 
-    if (taskItems.length > 0) {
-        const sectionLabel = document.createElement('div');
-        sectionLabel.className = 'tl-section-label';
-        sectionLabel.textContent = 'Tasks';
-        el.appendChild(sectionLabel);
-    }
+    const busy = _inflight > 0;
 
     taskItems.forEach(t => {
         const row = document.createElement('div');
-        row.className = 'tl-task-row' + (_inflight > 0 ? ' busy' : '') + (t.done ? ' done' : '');
+        row.className = 'tl-task-row' + (busy ? ' busy' : '') + (t.done ? ' done' : '');
+        row.addEventListener('click', () => { if (!busy) toggleTask(t.id); });
 
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.className = 'tl-task-cb';
-        cb.checked = t.done;
-        cb.disabled = _inflight > 0;
-        cb.addEventListener('change', () => toggleTask(t.id));
+        // Custom task circle
+        const circle = document.createElement('div');
+        circle.className = 'tl-task-circle' + (t.done ? ' done' : '');
+        if (t.done) {
+            circle.innerHTML = checkmarkSvg(9);
+        }
 
         const text = document.createElement('span');
         text.className = 'tl-task-name';
@@ -243,13 +239,13 @@ function renderTaskList() {
             ? `${t.text} ↑ ${isoLabel(t.carriedFrom)}`
             : t.text;
 
-        row.append(cb, text);
+        row.append(circle, text);
 
         if (viewDay === TODAY) {
             const delBtn = document.createElement('button');
             delBtn.className = 'tl-task-del';
             delBtn.textContent = '×';
-            delBtn.addEventListener('click', () => deleteTask(t.id));
+            delBtn.addEventListener('click', e => { e.stopPropagation(); deleteTask(t.id); });
             row.appendChild(delBtn);
         }
 
@@ -326,8 +322,7 @@ function renderStatsPanel() {
     el.innerHTML = '';
     if (viewDay !== TODAY) return;
 
-    const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
-    const { done, total } = computeStats(TODAY);
+    const { pinned, done, total } = computeStats(TODAY);
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
     // ── TODAY'S PROGRESS ──
@@ -339,9 +334,9 @@ function renderStatsPanel() {
     const cards = document.createElement('div');
     cards.className = 'tr-progress-cards';
     [
-        { label: 'Done',   value: done },
-        { label: 'Left',   value: total - done },
-        { label: '% Done', value: `${pct}%` },
+        { label: 'Done',     value: done },
+        { label: 'Left',     value: total - done },
+        { label: 'Complete', value: `${pct}%` },
     ].forEach(c => {
         const card = document.createElement('div');
         card.className = 'tr-card';
@@ -395,15 +390,14 @@ function renderStatsPanel() {
         applyIcons();
     }
 
-    // ── THIS WEEK ──
+    // ── THIS WEEK (rolling last 7 days) ──
     const weekLabel = document.createElement('div');
     weekLabel.className = 'tr-section-label';
     weekLabel.textContent = 'This Week';
     el.appendChild(weekLabel);
 
-    const weekDays = getWeekDays(TODAY);
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const MAX_BAR_H = 56; // px
+    const last7 = getLast7Days(TODAY);
+    const MAX_BAR_H = 64; // px
 
     const barsRow = document.createElement('div');
     barsRow.className = 'tr-week-bars';
@@ -411,13 +405,12 @@ function renderStatsPanel() {
     const labelsRow = document.createElement('div');
     labelsRow.className = 'tr-week-labels';
 
-    weekDays.forEach((iso, i) => {
-        const isToday  = iso === TODAY;
-        const isFuture = iso > TODAY;
+    last7.forEach(iso => {
+        const isToday = iso === TODAY;
 
         // % of pinned habits done that day
         let ratio = 0;
-        if (!isFuture && pinned.length > 0) {
+        if (pinned.length > 0) {
             const dayDone = pinned.filter(h => {
                 const rec = h.records.find(r => r.day === iso);
                 return rec && rec.done;
@@ -429,22 +422,20 @@ function renderStatsPanel() {
         barCol.className = 'tr-week-bar-col';
 
         const bar = document.createElement('div');
-        const heightPx = isFuture ? 3 : Math.max(3, Math.round(ratio * MAX_BAR_H));
+        const heightPx = Math.max(3, Math.round(ratio * MAX_BAR_H));
         bar.style.height = `${heightPx}px`;
-        if (isToday) {
-            bar.className = 'tr-week-bar today-bar';
-        } else if (ratio > 0) {
-            bar.className = 'tr-week-bar done-bar';
-        } else {
-            bar.className = 'tr-week-bar';
-        }
+        bar.className = isToday
+            ? 'tr-week-bar today-bar'
+            : ratio > 0
+                ? 'tr-week-bar done-bar'
+                : 'tr-week-bar';
 
         barCol.appendChild(bar);
         barsRow.appendChild(barCol);
 
         const lbl = document.createElement('div');
         lbl.className = 'tr-week-lbl' + (isToday ? ' today-lbl' : '');
-        lbl.textContent = dayNames[i];
+        lbl.textContent = shortDay(iso);
         labelsRow.appendChild(lbl);
     });
 
