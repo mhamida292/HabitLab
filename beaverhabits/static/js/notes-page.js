@@ -39,6 +39,44 @@ let state = {
 // Auto-save debounce
 let saveTimer = null;
 
+// ── Context menu (desktop) ─────────────────────────────────────────────────
+let _ctxNote = null;
+let _notesCtxMenu = null;
+
+function initContextMenu() {
+    if (!window.matchMedia('(hover: hover)').matches) return;
+    _notesCtxMenu = document.createElement('div');
+    _notesCtxMenu.className = 'ctx-menu';
+    const delItem = document.createElement('div');
+    delItem.className = 'ctx-menu-item danger';
+    delItem.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg> Delete';
+    delItem.addEventListener('click', () => {
+        const note = _ctxNote;
+        hideCtxMenu();
+        if (note) deleteNote(note.id);
+    });
+    _notesCtxMenu.appendChild(delItem);
+    document.body.appendChild(_notesCtxMenu);
+    document.addEventListener('click', hideCtxMenu);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hideCtxMenu(); });
+}
+
+function showCtxMenu(e, note) {
+    if (!_notesCtxMenu) return;
+    e.preventDefault();
+    _ctxNote = note;
+    const x = Math.min(e.clientX, window.innerWidth - 170);
+    const y = Math.min(e.clientY, window.innerHeight - 60);
+    _notesCtxMenu.style.left = x + 'px';
+    _notesCtxMenu.style.top = y + 'px';
+    _notesCtxMenu.classList.add('open');
+}
+
+function hideCtxMenu() {
+    _notesCtxMenu?.classList.remove('open');
+    _ctxNote = null;
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init() {
     const params = new URLSearchParams(location.search);
@@ -72,6 +110,7 @@ async function init() {
     document.getElementById('notesNewBtn').addEventListener('click', () => createNote());
     document.getElementById('viewListBtn').addEventListener('click', () => setView('list'));
     document.getElementById('viewGridBtn').addEventListener('click', () => setView('grid'));
+    initContextMenu();
 
     // Auto-create if ?new=1
     if (params.get('new') === '1') {
@@ -186,6 +225,42 @@ function makeListItem(note) {
     meta.appendChild(el('span', { class: 'note-list-date' }, fmtDate(note.created_at)));
     item.appendChild(meta);
     if (note.body) item.appendChild(el('div', { class: 'note-list-preview' }, note.body));
+
+    // Desktop: right-click context menu
+    item.addEventListener('contextmenu', e => showCtxMenu(e, note));
+
+    // Mobile: swipe left to reveal delete
+    if (window.matchMedia('(hover: none)').matches) {
+        const wrap = el('div', { class: 'note-list-item-wrap' });
+        const delBtn = el('div', { class: 'note-swipe-del' });
+        delBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+        delBtn.addEventListener('click', () => deleteNote(note.id));
+        wrap.appendChild(delBtn);
+
+        let startX = 0, startY = 0, tx = 0, locked = false;
+        const SNAP = 72;
+        item.addEventListener('touchstart', e => {
+            startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+            tx = 0; locked = false;
+            item.classList.remove('swipe-snap');
+        }, { passive: true });
+        item.addEventListener('touchmove', e => {
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+            if (!locked && Math.abs(dy) > Math.abs(dx)) return;
+            locked = true;
+            tx = Math.max(-SNAP, Math.min(0, dx));
+            item.style.transform = `translateX(${tx}px)`;
+        }, { passive: true });
+        item.addEventListener('touchend', () => {
+            item.classList.add('swipe-snap');
+            item.style.transform = tx < -SNAP / 2 ? `translateX(-${SNAP}px)` : '';
+        });
+
+        wrap.appendChild(item);
+        return wrap;
+    }
+
     return item;
 }
 
@@ -216,9 +291,6 @@ function renderEditor(container, note) {
     titleInput.addEventListener('input', () => scheduleSave(note.id, { title: titleInput.value }));
     header.appendChild(titleInput);
 
-    const delBtn = el('button', { class: 'note-editor-delete', title: 'Delete note', onclick: () => deleteNote(note.id) });
-    delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
-    header.appendChild(delBtn);
     container.appendChild(header);
 
     // Meta bar
@@ -293,6 +365,7 @@ function makeCard(note) {
     foot.appendChild(el('span', { class: 'note-card-date' }, fmtDate(note.created_at)));
     if (habit) foot.appendChild(makeHabitPill(habit));
     card.appendChild(foot);
+    card.addEventListener('contextmenu', e => showCtxMenu(e, note));
     return card;
 }
 

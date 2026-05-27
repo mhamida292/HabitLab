@@ -631,10 +631,20 @@ textarea.finp { resize: vertical; min-height: 80px; }
     width: var(--list-w); flex-shrink: 0;
     border-right: 1px solid var(--border); overflow-y: auto;
 }
+.note-list-item-wrap {
+    position: relative; overflow: hidden;
+}
+.note-swipe-del {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 72px;
+    background: #b91c1c; display: flex; align-items: center; justify-content: center;
+    color: white; cursor: pointer;
+}
 .note-list-item {
     padding: 10px 14px; border-bottom: 1px solid var(--border);
     cursor: pointer; transition: background var(--transition);
+    background: var(--bg-surface); position: relative; z-index: 1;
 }
+.note-list-item.swipe-snap { transition: transform .2s cubic-bezier(.25,.46,.45,.94); }
 .note-list-item:hover { background: var(--bg-elevated); }
 .note-list-item.selected {
     background: var(--accent-sel);
