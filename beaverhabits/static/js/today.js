@@ -321,6 +321,7 @@ function renderStatsPanel() {
 
 // ── Day navigation ─────────────────────────────────────────────────────────────
 async function navigateDay(delta) {
+    if (delta > 0 && viewDay >= TODAY) return;
     viewDay = isoAddDays(viewDay, delta);
     try {
         taskItems = await api.get(`/api/v1/tasks?date=${viewDay}&carry=false`);
