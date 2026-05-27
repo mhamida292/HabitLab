@@ -47,7 +47,7 @@ beaverhabits/
     │   ├── api.js              # Thin fetch wrapper: api.get/post/put/delete/patch
     │   ├── app.js              # Settings modal, toast, global helpers
     │   ├── habits.js           # Habits page: list, detail panel, calendar wiring
-    │   ├── today.js            # Today tab: task list, habit pins, stats panel, swipe
+    │   ├── today.js            # Today tab: habit pins, task list, stats panel, day nav
     │   ├── monthly.js          # Monthly calendar component (mountCalendar)
     │   ├── notes.js            # Note editor modal
     │   ├── notes-page.js       # Notes page logic
@@ -131,6 +131,10 @@ Use `buildIconEl(nameOrEmoji, sizePx)` from `icons.js` to render icons. It retur
 
 Do not render icon names as raw text. The pattern `habit.icon + ' ' + habit.name` is **wrong** for Lucide icon names — use `buildIconEl` for the icon, then a separate text node for the name.
 
+### Navigation Order
+
+Nav rail (desktop) and mobile tab bar share the same order: **Today → Habits → Notes → Settings**. Today is the default/first tab. The Pomodoro timer button is present in the nav rail (desktop sidebar) but **not** in the mobile tab bar.
+
 ### API Shape
 
 - All endpoints under `/api/v1/`. Session JWT or `Authorization: Bearer <token>`.
@@ -145,8 +149,8 @@ Do not render icon names as raw text. The pattern `habit.icon + ' ' + habit.name
 
 The Today tab (`/today`) is a two-column layout on desktop:
 
-- **Left column** (`.today-list-col`, 420px) — pinned habit rows + one-off task list + pin section. Supports day navigation (prev/next).
-- **Right column** (`.today-stats-col`, hidden on mobile) — stats panel: progress cards, habit streaks, weekly bar chart.
+- **Left column** (`.today-list-col`, `var(--list-w)` = 420px) — pinned habit rows + one-off task list + pin section. Supports day navigation (prev/next) up to 7 days ahead (`MAX_FUTURE = 7`).
+- **Right column** (`.today-stats-col`, hidden on mobile) — stats panel: progress cards, habit streaks, rolling 7-day bar chart.
 
 Key module-level state in `today.js`:
 
@@ -155,10 +159,26 @@ Key module-level state in `today.js`:
 | `TODAY` | Local ISO date string of the actual current date |
 | `viewDay` | ISO date of the currently-viewed day (may differ from TODAY when navigating) |
 | `allHabits` | Full habit array fetched from API |
-| `pinnedIds` | Array of habit IDs pinned to today (persisted in `localStorage`) |
-| `taskItems` | Array of `{id, text, done, carriedFrom?}` objects (persisted in `localStorage`) |
+| `pinnedIds` | Array of habit IDs pinned to today (persisted in `localStorage`); **order matters** — use `.map(id => allHabits.find(...)).filter(Boolean)` not `allHabits.filter()` |
+| `taskItems` | Array of `{id, text, done}` objects (persisted in `localStorage`) |
 
-Task rows support swipe-to-delete on touch devices (`@media (hover: none)`) and a hover ✕ button on desktop (`@media (hover: hover)`). Tasks are ephemeral — no confirmation on delete.
+**Drag-to-reorder** uses SortableJS (global `window.Sortable` from `/static/vendor/sortable.min.js`):
+- Each pinned habit + its sub-goal pills are wrapped in `.tl-habit-group[data-habit-id]` — the draggable unit.
+- `Sortable` is created on `#todayPins` with `draggable: '.tl-habit-group'`.
+- On sort end, `pinnedIds` is reordered and persisted via `PUT /api/v1/habits/meta` with `{ pinned_today_ids: pinnedIds }`.
+- Task sort updates `taskItems[]` in memory only (no API endpoint for task ordering).
+- `initSortables()` destroys and recreates instances on every `render()` call since `innerHTML` wipes DOM references.
+
+**Circles** — Both habit and task rows use custom 26px `<div>` circles (not `<input type="checkbox">`):
+- `.tl-habit-circle`: shows habit icon via `buildIconEl` when unchecked, inline SVG checkmark when done.
+- `.tl-task-circle`: empty when undone, SVG checkmark when done.
+- All rows use `padding: 7px 14px` for uniform height.
+
+**Future day planning** — Users can navigate up to `MAX_FUTURE = 7` days ahead. `renderAddRow()` is shown for `viewDay >= TODAY`. A banner appears for future/past days. `silentRefresh()` only runs when `viewDay === TODAY`.
+
+**Weekly chart** — Rolling 7-day window ending on `TODAY`, computed via `getLast7Days(TODAY)`. Not a calendar Mon–Sun week.
+
+Task rows support swipe-to-delete on touch devices and a hover ✕ button on desktop. Tasks are ephemeral — no confirmation on delete.
 
 ### Habits Page — Swipe + Context Menu
 
@@ -173,6 +193,15 @@ On **desktop (pointer) devices**, right-clicking a habit row opens a singleton `
 
 The context menu is a singleton appended to `<body>` by `initContextMenu()` on page load. It only initialises when `window.matchMedia('(hover: hover)').matches`. Capture `_ctxHabit` into a local `const` **before** calling `hideCtxMenu()` — `hideCtxMenu()` nulls `_ctxHabit`.
 
+### Notes Page — Delete (`notes-page.js`)
+
+Delete is exposed via interaction, not a persistent button in the editor:
+
+- **Desktop**: Right-click any list item or grid card → singleton `.ctx-menu` with a "Delete" option. Same `.ctx-menu` CSS class as habits; notes creates its own instance (`_notesCtxMenu`) appended to `<body>` by `initContextMenu()` in `notes-page.js`.
+- **Mobile**: Swipe left on a list item → reveals a 72px red `.note-swipe-del` button. Each list item is wrapped in `.note-list-item-wrap` (relative + overflow hidden); the `.note-list-item` itself slides via `translateX` and carries `z-index: 1` so it covers the delete button at rest.
+
+There is **no delete button in the editor header**.
+
 ### Sub-Goals
 
 A habit can have `sub_goals: [{id, name}, …]`. When toggling a sub-goal, POST to completions with `sub_goal_id`. The response includes `sub_goals_done: [id, …]`. The `renderSubGoalsSection(habit)` function reads today's record from `habit.records` using `localIso()`. The `cal:toggled` DOM event (dispatched by `monthly.js`) triggers re-renders in `habits.js`.
@@ -180,6 +209,8 @@ A habit can have `sub_goals: [{id, name}, …]`. When toggling a sub-goal, POST 
 ### Pomodoro Timer
 
 `timer.js` is a standalone module (no imports). It anchors to wall clock (`Date.now()` + `_remainingAtStart`) to prevent background-tab throttling drift. The `visibilitychange` listener calls `tick()` immediately when the tab regains focus. Durations are persisted in `localStorage` (`timer-work`, `timer-break`). Chime uses Web Audio API (no file dependency).
+
+The timer button appears in the **desktop nav rail only** — it is not present in the mobile tab bar.
 
 ---
 
@@ -214,3 +245,6 @@ A habit can have `sub_goals: [{id, name}, …]`. When toggling a sub-goal, POST 
 | Swipe task/habit colours wrong | `var(--bg)` is undefined — use `var(--bg-primary)` or `var(--bg-surface)` |
 | Context menu archive/delete does nothing | `_ctxHabit` was read after `hideCtxMenu()` nulled it — capture `const habit = _ctxHabit` before calling `hideCtxMenu()` |
 | Today tab stats panel blank | `#todayStatsPanel` element missing from DOM, or `renderStatsPanel()` not called from `render()` |
+| pinnedIds drag order not respected | Used `allHabits.filter()` instead of `pinnedIds.map(id => allHabits.find(...)).filter(Boolean)` |
+| SortableJS not found in ES module | Use `window.Sortable` — it's loaded as a global script, not an ES module import |
+| Notes swipe delete not visible | `.note-list-item` missing `background: var(--bg-surface)` or `z-index: 1` — the item must visually cover the delete button at rest |
