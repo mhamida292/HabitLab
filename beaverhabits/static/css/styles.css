@@ -1038,6 +1038,7 @@ textarea.finp { resize: vertical; min-height: 80px; }
 .today-list-col {
     width: var(--list-w);      /* 420px — matches habits list column */
     flex-shrink: 0;
+    min-height: 0;             /* lets flex child shrink so overflow-y:auto actually scrolls */
     background: var(--bg-surface); /* matches nav rail + habits list */
     border-right: 1px solid var(--border);
     display: flex;
@@ -1057,11 +1058,14 @@ textarea.finp { resize: vertical; min-height: 80px; }
 
 /* Mobile — match global 767px breakpoint */
 @media (max-width: 767px) {
-    .today-wrap { overflow-x: hidden; }
+    .today-wrap { overflow-x: hidden; overflow-y: hidden; }
     .today-list-col {
         width: 100%;
         max-width: 100%;
         border-right: none;
+        flex: 1;
+        min-height: 0;   /* critical: allows overflow-y:auto to scroll */
+        overflow-y: auto;
         /* leave room above the mobile tab bar */
         padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     }
@@ -1181,11 +1185,11 @@ textarea.finp { resize: vertical; min-height: 80px; }
 .tl-habit-circle:hover { border-color: var(--accent); color: var(--accent-light); }
 .tl-habit-circle.done { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-/* Custom task circle: plain circle, no icon inside */
+/* Custom task circle — same size as habit circle for uniform row heights */
 .tl-task-circle {
     flex-shrink: 0;
-    width: 18px;
-    height: 18px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     border: 1.5px solid var(--border);
     background: transparent;
@@ -1199,6 +1203,26 @@ textarea.finp { resize: vertical; min-height: 80px; }
 }
 .tl-task-circle:hover { border-color: var(--accent); }
 .tl-task-circle.done { background: var(--accent); border-color: var(--accent); }
+
+/* Drag handle — visible on row hover */
+.tl-drag-handle {
+    flex-shrink: 0;
+    width: 16px;
+    color: var(--text-muted);
+    cursor: grab;
+    font-size: 13px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.12s;
+    user-select: none;
+    text-align: center;
+}
+.tl-habit-row:hover .tl-drag-handle,
+.tl-task-row:hover .tl-drag-handle { opacity: 1; }
+.tl-drag-handle:active { cursor: grabbing; }
+
+/* Sort placeholder ghost */
+.tl-sort-ghost { opacity: 0.35; background: var(--accent-sel) !important; border-radius: 6px; }
 
 .tl-habit-icon {
     flex-shrink: 0;
@@ -1231,12 +1255,12 @@ textarea.finp { resize: vertical; min-height: 80px; }
     white-space: nowrap;
 }
 
-/* Sub-goal pills */
+/* Sub-goal pills — indent to align under habit name (past drag handle + circle) */
 .tl-sg-pills {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    padding: 2px 14px 6px 48px;
+    padding: 2px 14px 6px 72px; /* 14px left pad + 16px handle + 8px gap + 26px circle + 8px gap */
 }
 
 .tl-sg-pill {
@@ -1255,12 +1279,12 @@ textarea.finp { resize: vertical; min-height: 80px; }
     color: var(--accent-light);
 }
 
-/* Task rows */
+/* Task rows — same padding as habit rows for uniform height */
 .tl-task-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 14px;
+    padding: 7px 14px;
     transition: background 0.12s;
 }
 .tl-task-row:hover { background: var(--bg-elevated); }

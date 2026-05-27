@@ -21,7 +21,6 @@ function isoLabel(iso) {
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-// "Tuesday, 26 May" style label for header
 function headerDateLabel(iso) {
     const d = new Date(iso + 'T00:00:00');
     const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
@@ -30,31 +29,32 @@ function headerDateLabel(iso) {
     return `${weekday}, ${day} ${month}`;
 }
 
-// Returns last 7 days ending on referenceIso (rolling window)
 function getLast7Days(referenceIso) {
     return Array.from({ length: 7 }, (_, i) => isoAddDays(referenceIso, i - 6));
 }
 
-// Short day label (2 chars) from ISO
 function shortDay(iso) {
     const d = new Date(iso + 'T00:00:00');
     return d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
 }
 
-// Checkmark SVG for done circles
 function checkmarkSvg(size) {
     return `<svg viewBox="0 0 12 12" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6l3 3 5-5"/></svg>`;
 }
 
 // ── State ──────────────────────────────────────────────────────────────────────
 const TODAY = localIso();
-const MAX_DAY = isoAddDays(TODAY, MAX_FUTURE); // furthest date allowed
+const MAX_DAY = isoAddDays(TODAY, MAX_FUTURE);
 let viewDay = TODAY;
-let taskItems = [];   // [{ id, text, done, date, carriedFrom? }]
-let allHabits = [];   // full habit array from GET /api/v1/habits
-let pinnedIds = [];   // habit IDs from GET /api/v1/habits/meta .pinned_today_ids
-let _inflight = 0;    // mutation guard — blocks silentRefresh while > 0
-let _lastRefresh = 0; // ms timestamp of last refresh
+let taskItems = [];
+let allHabits = [];
+let pinnedIds = [];   // order matters — used for display order
+let _inflight = 0;
+let _lastRefresh = 0;
+
+// ── Sortable instances ─────────────────────────────────────────────────────────
+let _sortHabits = null;
+let _sortTasks = null;
 
 // ── Load ───────────────────────────────────────────────────────────────────────
 async function loadAll() {
@@ -76,8 +76,9 @@ async function loadAll() {
 }
 
 // ── Shared stats helper ────────────────────────────────────────────────────────
+// Respects pinnedIds order so drag-reorder is reflected in stats
 function computeStats(day) {
-    const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
+    const pinned = pinnedIds.map(id => allHabits.find(h => h.id === id)).filter(Boolean);
     const habitsDone = pinned.filter(h => {
         const rec = h.records.find(r => r.day === day);
         return rec && rec.done;
@@ -97,9 +98,50 @@ function render() {
     renderAddRow();
     renderPinControl();
     renderStatsPanel();
+    initSortables();
 }
 
-// Header: ← Today — Weekday, D Month → | N / M done
+// ── Sortable init (after every render) ────────────────────────────────────────
+function initSortables() {
+    if (typeof Sortable === 'undefined') return;
+
+    _sortHabits?.destroy(); _sortHabits = null;
+    _sortTasks?.destroy();  _sortTasks  = null;
+
+    const pinsEl = document.getElementById('todayPins');
+    if (pinsEl?.querySelector('.tl-habit-group')) {
+        _sortHabits = Sortable.create(pinsEl, {
+            handle: '.tl-drag-handle',
+            animation: 120,
+            draggable: '.tl-habit-group',
+            ghostClass: 'tl-sort-ghost',
+            onEnd(evt) {
+                if (evt.oldIndex === evt.newIndex) return;
+                // Read new order from DOM, update state, persist
+                pinnedIds = [...pinsEl.querySelectorAll('.tl-habit-group[data-habit-id]')]
+                    .map(el => el.dataset.habitId);
+                api.put('/api/v1/habits/meta', { pinned_today_ids: pinnedIds })
+                    .catch(() => toast('Failed to save habit order', 'error'));
+            },
+        });
+    }
+
+    const listEl = document.getElementById('todayList');
+    if (listEl?.querySelector('.tl-task-row')) {
+        _sortTasks = Sortable.create(listEl, {
+            handle: '.tl-drag-handle',
+            animation: 120,
+            ghostClass: 'tl-sort-ghost',
+            onEnd(evt) {
+                if (evt.oldIndex === evt.newIndex) return;
+                const moved = taskItems.splice(evt.oldIndex, 1)[0];
+                taskItems.splice(evt.newIndex, 0, moved);
+            },
+        });
+    }
+}
+
+// ── Header ─────────────────────────────────────────────────────────────────────
 function renderHeader() {
     const el = document.getElementById('todayDateNav');
     if (!el) return;
@@ -134,7 +176,6 @@ function renderHeader() {
     header.append(prevBtn, label, nextBtn, countEl);
     el.appendChild(header);
 
-    // Banner for past / future days
     document.querySelector('.tl-past-banner')?.remove();
     if (viewDay !== TODAY) {
         const banner = document.createElement('div');
@@ -156,12 +197,14 @@ function renderProgress() {
     fill.style.width = total > 0 ? `${(done / total) * 100}%` : '0%';
 }
 
+// ── Habit pins ──────────────────────────────────────────────────────────────────
 function renderHabitPins() {
     const el = document.getElementById('todayPins');
     if (!el) return;
     el.innerHTML = '';
 
-    const pinned = allHabits.filter(h => pinnedIds.includes(h.id));
+    // Use pinnedIds order — drag-reorder updates this array
+    const pinned = pinnedIds.map(id => allHabits.find(h => h.id === id)).filter(Boolean);
     if (pinned.length === 0) return;
 
     pinned.forEach(h => {
@@ -170,11 +213,21 @@ function renderHabitPins() {
         const hasSg = h.sub_goals && h.sub_goals.length > 0;
         const busy = _inflight > 0;
 
+        // Group wrapper — habit row + sub-goal pills move together when dragging
+        const group = document.createElement('div');
+        group.className = 'tl-habit-group';
+        group.dataset.habitId = h.id;
+
+        // Habit row
         const row = document.createElement('div');
         row.className = 'tl-habit-row' + (busy ? ' busy' : '') + (isDone ? ' done' : '');
         row.addEventListener('click', () => { if (!busy) toggleHabit(h); });
 
-        // Custom circle: icon inside when unchecked, checkmark when done
+        const handle = document.createElement('div');
+        handle.className = 'tl-drag-handle';
+        handle.textContent = '⠿';
+        handle.addEventListener('click', e => e.stopPropagation());
+
         const circle = document.createElement('div');
         circle.className = 'tl-habit-circle' + (isDone ? ' done' : '');
         if (isDone) {
@@ -187,18 +240,14 @@ function renderHabitPins() {
         name.className = 'tl-habit-name';
         name.textContent = h.name;
 
-        // Badge — always accent styled
         const badge = document.createElement('span');
         badge.className = 'tl-habit-badge';
-        if (hasSg) {
-            const doneSgs = rec?.sub_goals_done?.length || 0;
-            badge.textContent = `${doneSgs}/${h.sub_goals.length}`;
-        } else {
-            badge.textContent = 'habit';
-        }
+        badge.textContent = hasSg
+            ? `${rec?.sub_goals_done?.length || 0}/${h.sub_goals.length}`
+            : 'habit';
 
-        row.append(circle, name, badge);
-        el.appendChild(row);
+        row.append(handle, circle, name, badge);
+        group.appendChild(row);
 
         // Sub-goal pills
         if (hasSg) {
@@ -213,12 +262,15 @@ function renderHabitPins() {
                 pill.addEventListener('click', e => { e.stopPropagation(); toggleSg(h, sg.id); });
                 pills.appendChild(pill);
             });
-            el.appendChild(pills);
+            group.appendChild(pills);
         }
+
+        el.appendChild(group);
     });
     applyIcons();
 }
 
+// ── Task list ───────────────────────────────────────────────────────────────────
 function renderTaskList() {
     const el = document.getElementById('todayList');
     if (!el) return;
@@ -231,12 +283,15 @@ function renderTaskList() {
         row.className = 'tl-task-row' + (busy ? ' busy' : '') + (t.done ? ' done' : '');
         row.addEventListener('click', () => { if (!busy) toggleTask(t.id); });
 
-        // Custom task circle
+        const handle = document.createElement('div');
+        handle.className = 'tl-drag-handle';
+        handle.textContent = '⠿';
+        handle.addEventListener('click', e => e.stopPropagation());
+
+        // Same-size circle as habit rows (26px)
         const circle = document.createElement('div');
         circle.className = 'tl-task-circle' + (t.done ? ' done' : '');
-        if (t.done) {
-            circle.innerHTML = checkmarkSvg(9);
-        }
+        if (t.done) circle.innerHTML = checkmarkSvg(11);
 
         const text = document.createElement('span');
         text.className = 'tl-task-name';
@@ -244,26 +299,22 @@ function renderTaskList() {
             ? `${t.text} ↑ ${isoLabel(t.carriedFrom)}`
             : t.text;
 
-        row.append(circle, text);
-
-        // Delete button — available on all days
         const delBtn = document.createElement('button');
         delBtn.className = 'tl-task-del';
         delBtn.textContent = '×';
         delBtn.addEventListener('click', e => { e.stopPropagation(); deleteTask(t.id); });
-        row.appendChild(delBtn);
 
+        row.append(handle, circle, text, delBtn);
         el.appendChild(row);
     });
 }
 
+// ── Add row ─────────────────────────────────────────────────────────────────────
 function renderAddRow() {
     const el = document.getElementById('todayAddRow');
     if (!el) return;
     el.innerHTML = '';
-
-    // Show for today and future days — can't add tasks to past days
-    if (viewDay < TODAY) return;
+    if (viewDay < TODAY) return; // read-only for past days
 
     const row = document.createElement('div');
     row.className = 'tl-add-row';
@@ -279,24 +330,21 @@ function renderAddRow() {
         ? 'Add task for today…'
         : `Add task for ${headerDateLabel(viewDay)}…`;
     inp.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && inp.value.trim()) {
-            addTask(inp.value.trim());
-        }
+        if (e.key === 'Enter' && inp.value.trim()) addTask(inp.value.trim());
     });
 
     row.append(plus, inp);
     el.appendChild(row);
 }
 
+// ── Pin control ─────────────────────────────────────────────────────────────────
 function renderPinControl() {
     const el = document.getElementById('todayPinControl');
     if (!el) return;
     el.innerHTML = '';
     if (allHabits.length === 0) return;
 
-    const divider = document.createElement('div');
-    divider.className = 'tl-divider';
-    el.appendChild(divider);
+    el.appendChild(Object.assign(document.createElement('div'), { className: 'tl-divider' }));
 
     const label = document.createElement('div');
     label.className = 'tl-pin-label';
@@ -324,6 +372,7 @@ function renderPinControl() {
     applyIcons();
 }
 
+// ── Stats panel ─────────────────────────────────────────────────────────────────
 function renderStatsPanel() {
     const el = document.getElementById('todayStatsPanel');
     if (!el) return;
@@ -333,7 +382,7 @@ function renderStatsPanel() {
     const { pinned, done, total } = computeStats(TODAY);
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-    // ── TODAY'S PROGRESS ──
+    // Progress cards
     const progLabel = document.createElement('div');
     progLabel.className = 'tr-section-label';
     progLabel.textContent = "Today's Progress";
@@ -341,41 +390,28 @@ function renderStatsPanel() {
 
     const cards = document.createElement('div');
     cards.className = 'tr-progress-cards';
-    [
-        { label: 'Done',     value: done },
-        { label: 'Left',     value: total - done },
-        { label: 'Complete', value: `${pct}%` },
-    ].forEach(c => {
-        const card = document.createElement('div');
-        card.className = 'tr-card';
-        const val = document.createElement('div');
-        val.className = 'tr-card-value';
-        val.textContent = c.value;
-        const lbl = document.createElement('div');
-        lbl.className = 'tr-card-label';
-        lbl.textContent = c.label;
-        card.append(val, lbl);
-        cards.appendChild(card);
-    });
+    [{ label: 'Done', value: done }, { label: 'Left', value: total - done }, { label: 'Complete', value: `${pct}%` }]
+        .forEach(c => {
+            const card = document.createElement('div');
+            card.className = 'tr-card';
+            card.innerHTML = `<div class="tr-card-value">${c.value}</div><div class="tr-card-label">${c.label}</div>`;
+            cards.appendChild(card);
+        });
     el.appendChild(cards);
 
-    // ── HABIT STREAKS ──
+    // Streaks
     if (pinned.length > 0) {
         const streakLabel = document.createElement('div');
         streakLabel.className = 'tr-section-label';
         streakLabel.textContent = 'Habit Streaks';
         el.appendChild(streakLabel);
 
-        const streakSection = document.createElement('div');
-        streakSection.className = 'tr-streak-section';
-
+        const section = document.createElement('div');
+        section.className = 'tr-streak-section';
         pinned.forEach(h => {
             const doneSet = new Set(h.records.filter(r => r.done).map(r => r.day));
             let streak = 0, cursor = TODAY;
-            while (doneSet.has(cursor)) {
-                streak++;
-                cursor = isoAddDays(cursor, -1);
-            }
+            while (doneSet.has(cursor)) { streak++; cursor = isoAddDays(cursor, -1); }
 
             const row = document.createElement('div');
             row.className = 'tr-streak-row';
@@ -392,30 +428,27 @@ function renderStatsPanel() {
             count.textContent = streak === 0 ? '— 0' : `🔥 ${streak}`;
 
             row.append(iconWrap, name, count);
-            streakSection.appendChild(row);
+            section.appendChild(row);
         });
-        el.appendChild(streakSection);
+        el.appendChild(section);
         applyIcons();
     }
 
-    // ── THIS WEEK (rolling last 7 days) ──
+    // Weekly bar chart (rolling last 7 days)
     const weekLabel = document.createElement('div');
     weekLabel.className = 'tr-section-label';
     weekLabel.textContent = 'This Week';
     el.appendChild(weekLabel);
 
     const last7 = getLast7Days(TODAY);
-    const MAX_BAR_H = 64; // px
-
+    const MAX_H = 64;
     const barsRow = document.createElement('div');
     barsRow.className = 'tr-week-bars';
-
     const labelsRow = document.createElement('div');
     labelsRow.className = 'tr-week-labels';
 
     last7.forEach(iso => {
         const isToday = iso === TODAY;
-
         let ratio = 0;
         if (pinned.length > 0) {
             const dayDone = pinned.filter(h => {
@@ -425,20 +458,13 @@ function renderStatsPanel() {
             ratio = dayDone / pinned.length;
         }
 
-        const barCol = document.createElement('div');
-        barCol.className = 'tr-week-bar-col';
-
+        const col = document.createElement('div');
+        col.className = 'tr-week-bar-col';
         const bar = document.createElement('div');
-        const heightPx = Math.max(3, Math.round(ratio * MAX_BAR_H));
-        bar.style.height = `${heightPx}px`;
-        bar.className = isToday
-            ? 'tr-week-bar today-bar'
-            : ratio > 0
-                ? 'tr-week-bar done-bar'
-                : 'tr-week-bar';
-
-        barCol.appendChild(bar);
-        barsRow.appendChild(barCol);
+        bar.style.height = `${Math.max(3, Math.round(ratio * MAX_H))}px`;
+        bar.className = isToday ? 'tr-week-bar today-bar' : ratio > 0 ? 'tr-week-bar done-bar' : 'tr-week-bar';
+        col.appendChild(bar);
+        barsRow.appendChild(col);
 
         const lbl = document.createElement('div');
         lbl.className = 'tr-week-lbl' + (isToday ? ' today-lbl' : '');
@@ -453,11 +479,10 @@ function renderStatsPanel() {
 // ── Day navigation ─────────────────────────────────────────────────────────────
 async function navigateDay(delta) {
     const candidate = isoAddDays(viewDay, delta);
-    if (candidate > MAX_DAY) return; // cap at MAX_FUTURE days ahead
+    if (candidate > MAX_DAY) return;
     viewDay = candidate;
     try {
-        const carry = viewDay === TODAY;
-        taskItems = await api.get(`/api/v1/tasks?date=${viewDay}&carry=${carry}`);
+        taskItems = await api.get(`/api/v1/tasks?date=${viewDay}&carry=${viewDay === TODAY}`);
         _lastRefresh = Date.now();
     } catch (err) {
         toast(err?.message || 'Failed to load tasks', 'error');
@@ -468,7 +493,7 @@ async function navigateDay(delta) {
 async function jumpToToday() {
     viewDay = TODAY;
     try {
-        taskItems = await api.get(`/api/v1/tasks?date=${viewDay}&carry=true`);
+        taskItems = await api.get(`/api/v1/tasks?date=${TODAY}&carry=true`);
         _lastRefresh = Date.now();
     } catch (err) {
         toast(err?.message || 'Failed to load tasks', 'error');
@@ -476,7 +501,7 @@ async function jumpToToday() {
     render();
 }
 
-// ── Mutations — Lockbox pattern throughout ─────────────────────────────────────
+// ── Mutations — Lockbox pattern ────────────────────────────────────────────────
 async function toggleTask(id) {
     const t = taskItems.find(x => x.id === id);
     if (!t) return;
@@ -528,16 +553,13 @@ async function toggleHabit(h) {
     render();
     try {
         const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
-            date: viewDay,
-            date_fmt: '%Y-%m-%d',
-            done: !currentlyDone,
+            date: viewDay, date_fmt: '%Y-%m-%d', done: !currentlyDone,
         });
         const habit = allHabits.find(x => x.id === h.id);
         if (habit) {
             const existing = habit.records.find(r => r.day === viewDay);
             if (existing) {
-                existing.done = result.done;
-                existing.count = result.count;
+                existing.done = result.done; existing.count = result.count;
             } else {
                 habit.records.push({ day: viewDay, done: result.done, count: result.count, sub_goals_done: [] });
             }
@@ -555,9 +577,7 @@ async function toggleSg(h, sgId) {
     render();
     try {
         const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
-            date: viewDay,
-            date_fmt: '%Y-%m-%d',
-            sub_goal_id: sgId,
+            date: viewDay, date_fmt: '%Y-%m-%d', sub_goal_id: sgId,
         });
         const habit = allHabits.find(x => x.id === h.id);
         if (habit) {
@@ -567,12 +587,7 @@ async function toggleSg(h, sgId) {
                 existing.count = result.count;
                 existing.sub_goals_done = result.sub_goals_done;
             } else {
-                habit.records.push({
-                    day: viewDay,
-                    done: result.done,
-                    count: result.count,
-                    sub_goals_done: result.sub_goals_done,
-                });
+                habit.records.push({ day: viewDay, done: result.done, count: result.count, sub_goals_done: result.sub_goals_done });
             }
         }
     } catch (err) {
@@ -583,7 +598,6 @@ async function toggleSg(h, sgId) {
     }
 }
 
-// Pin toggle: update memory first, then persist
 async function togglePin(habitId) {
     if (pinnedIds.includes(habitId)) {
         pinnedIds = pinnedIds.filter(id => id !== habitId);
@@ -598,18 +612,15 @@ async function togglePin(habitId) {
     }
 }
 
-// ── Silent refresh — only when viewing today ───────────────────────────────────
+// ── Silent refresh ─────────────────────────────────────────────────────────────
 function silentRefresh() {
-    if (viewDay !== TODAY) return; // no polling for past/future days
+    if (viewDay !== TODAY) return;
     if (_inflight > 0 || Date.now() - _lastRefresh < 3000) return;
     _lastRefresh = Date.now();
     (async () => {
         try {
             const fresh = await api.get(`/api/v1/tasks?date=${TODAY}&carry=true`);
-            if (_inflight === 0 && viewDay === TODAY) {
-                taskItems = fresh;
-                render();
-            }
+            if (_inflight === 0 && viewDay === TODAY) { taskItems = fresh; render(); }
         } catch { /* silent */ }
     })();
 }
@@ -618,7 +629,5 @@ function silentRefresh() {
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAll();
     window.addEventListener('focus', silentRefresh);
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) silentRefresh();
-    });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) silentRefresh(); });
 });
