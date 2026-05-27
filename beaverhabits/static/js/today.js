@@ -2,6 +2,9 @@
 import { api, toast } from '/static/js/api.js';
 import { buildIconEl, applyIcons } from '/static/js/icons.js';
 
+// ── Constants ──────────────────────────────────────────────────────────────────
+const MAX_FUTURE = 7; // max days ahead that can be planned
+
 // ── Utils ──────────────────────────────────────────────────────────────────────
 function localIso(d = new Date()) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -45,6 +48,7 @@ function checkmarkSvg(size) {
 
 // ── State ──────────────────────────────────────────────────────────────────────
 const TODAY = localIso();
+const MAX_DAY = isoAddDays(TODAY, MAX_FUTURE); // furthest date allowed
 let viewDay = TODAY;
 let taskItems = [];   // [{ id, text, done, date, carriedFrom? }]
 let allHabits = [];   // full habit array from GET /api/v1/habits
@@ -55,8 +59,9 @@ let _lastRefresh = 0; // ms timestamp of last refresh
 // ── Load ───────────────────────────────────────────────────────────────────────
 async function loadAll() {
     try {
+        const carry = viewDay === TODAY;
         const [tasks, habits, meta] = await Promise.all([
-            api.get(`/api/v1/tasks?date=${viewDay}&carry=${viewDay === TODAY}`),
+            api.get(`/api/v1/tasks?date=${viewDay}&carry=${carry}`),
             api.get('/api/v1/habits'),
             api.get('/api/v1/habits/meta'),
         ]);
@@ -119,7 +124,7 @@ function renderHeader() {
     const nextBtn = document.createElement('button');
     nextBtn.className = 'tl-nav-btn';
     nextBtn.textContent = '→';
-    nextBtn.disabled = viewDay === TODAY;
+    nextBtn.disabled = viewDay >= MAX_DAY;
     nextBtn.addEventListener('click', () => navigateDay(1));
 
     const countEl = document.createElement('span');
@@ -129,7 +134,7 @@ function renderHeader() {
     header.append(prevBtn, label, nextBtn, countEl);
     el.appendChild(header);
 
-    // Past-day banner
+    // Banner for past / future days
     document.querySelector('.tl-past-banner')?.remove();
     if (viewDay !== TODAY) {
         const banner = document.createElement('div');
@@ -138,7 +143,8 @@ function renderHeader() {
         link.href = '#';
         link.textContent = 'Jump to today';
         link.addEventListener('click', e => { e.preventDefault(); jumpToToday(); });
-        banner.append('Viewing a past day — ', link);
+        const msg = viewDay < TODAY ? 'Viewing a past day' : 'Planning ahead';
+        banner.append(`${msg} — `, link);
         el.after(banner);
     }
 }
@@ -164,7 +170,6 @@ function renderHabitPins() {
         const hasSg = h.sub_goals && h.sub_goals.length > 0;
         const busy = _inflight > 0;
 
-        // Habit row — clicking anywhere toggles
         const row = document.createElement('div');
         row.className = 'tl-habit-row' + (busy ? ' busy' : '') + (isDone ? ' done' : '');
         row.addEventListener('click', () => { if (!busy) toggleHabit(h); });
@@ -182,7 +187,7 @@ function renderHabitPins() {
         name.className = 'tl-habit-name';
         name.textContent = h.name;
 
-        // Badge: "N/M" for sub-goal habits, "habit" otherwise — always accent styled
+        // Badge — always accent styled
         const badge = document.createElement('span');
         badge.className = 'tl-habit-badge';
         if (hasSg) {
@@ -241,13 +246,12 @@ function renderTaskList() {
 
         row.append(circle, text);
 
-        if (viewDay === TODAY) {
-            const delBtn = document.createElement('button');
-            delBtn.className = 'tl-task-del';
-            delBtn.textContent = '×';
-            delBtn.addEventListener('click', e => { e.stopPropagation(); deleteTask(t.id); });
-            row.appendChild(delBtn);
-        }
+        // Delete button — available on all days
+        const delBtn = document.createElement('button');
+        delBtn.className = 'tl-task-del';
+        delBtn.textContent = '×';
+        delBtn.addEventListener('click', e => { e.stopPropagation(); deleteTask(t.id); });
+        row.appendChild(delBtn);
 
         el.appendChild(row);
     });
@@ -257,7 +261,9 @@ function renderAddRow() {
     const el = document.getElementById('todayAddRow');
     if (!el) return;
     el.innerHTML = '';
-    if (viewDay !== TODAY) return;
+
+    // Show for today and future days — can't add tasks to past days
+    if (viewDay < TODAY) return;
 
     const row = document.createElement('div');
     row.className = 'tl-add-row';
@@ -269,7 +275,9 @@ function renderAddRow() {
     const inp = document.createElement('input');
     inp.type = 'text';
     inp.className = 'tl-add-input';
-    inp.placeholder = 'Add task for today…';
+    inp.placeholder = viewDay === TODAY
+        ? 'Add task for today…'
+        : `Add task for ${headerDateLabel(viewDay)}…`;
     inp.addEventListener('keydown', e => {
         if (e.key === 'Enter' && inp.value.trim()) {
             addTask(inp.value.trim());
@@ -408,7 +416,6 @@ function renderStatsPanel() {
     last7.forEach(iso => {
         const isToday = iso === TODAY;
 
-        // % of pinned habits done that day
         let ratio = 0;
         if (pinned.length > 0) {
             const dayDone = pinned.filter(h => {
@@ -445,10 +452,12 @@ function renderStatsPanel() {
 
 // ── Day navigation ─────────────────────────────────────────────────────────────
 async function navigateDay(delta) {
-    if (delta > 0 && viewDay >= TODAY) return;
-    viewDay = isoAddDays(viewDay, delta);
+    const candidate = isoAddDays(viewDay, delta);
+    if (candidate > MAX_DAY) return; // cap at MAX_FUTURE days ahead
+    viewDay = candidate;
     try {
-        taskItems = await api.get(`/api/v1/tasks?date=${viewDay}&carry=false`);
+        const carry = viewDay === TODAY;
+        taskItems = await api.get(`/api/v1/tasks?date=${viewDay}&carry=${carry}`);
         _lastRefresh = Date.now();
     } catch (err) {
         toast(err?.message || 'Failed to load tasks', 'error');
@@ -589,16 +598,15 @@ async function togglePin(habitId) {
     }
 }
 
-// ── Silent refresh ─────────────────────────────────────────────────────────────
+// ── Silent refresh — only when viewing today ───────────────────────────────────
 function silentRefresh() {
+    if (viewDay !== TODAY) return; // no polling for past/future days
     if (_inflight > 0 || Date.now() - _lastRefresh < 3000) return;
     _lastRefresh = Date.now();
     (async () => {
         try {
-            const fresh = await api.get(
-                `/api/v1/tasks?date=${viewDay}&carry=${viewDay === TODAY}`
-            );
-            if (_inflight === 0) {
+            const fresh = await api.get(`/api/v1/tasks?date=${TODAY}&carry=true`);
+            if (_inflight === 0 && viewDay === TODAY) {
                 taskItems = fresh;
                 render();
             }

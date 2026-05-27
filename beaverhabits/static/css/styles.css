@@ -1055,10 +1055,20 @@ textarea.finp { resize: vertical; min-height: 80px; }
     gap: 20px;
 }
 
-/* Mobile */
-@media (max-width: 700px) {
-    .today-list-col { width: 100%; border-right: none; }
+/* Mobile — match global 767px breakpoint */
+@media (max-width: 767px) {
+    .today-wrap { overflow-x: hidden; }
+    .today-list-col {
+        width: 100%;
+        max-width: 100%;
+        border-right: none;
+        /* leave room above the mobile tab bar */
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
     .today-stats-col { display: none; }
+    /* Keep header text from overflowing on narrow screens */
+    .tl-date { font-size: 0.8rem; }
+    .tl-done-count { display: none; }
 }
 
 /* ── Left column ─────────────────────────────────────────────── */
