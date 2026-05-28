@@ -288,17 +288,3 @@ class HabitListBuilder:
         habits.sort(key=lambda x: all_status.index(x.status))
 
         return habits
-
-
-@dataclass
-class ImageObject(DataClassJsonMixin):
-    id: str
-    url: str
-    blob: bytes | None = None
-    owner: str | None = None
-
-
-class ImageStorage(Protocol):
-    async def save(self, byte_data: bytes, user: User | None = None) -> ImageObject: ...
-
-    async def get(self, uuid: str, user: User | None = None) -> ImageObject | None: ...
