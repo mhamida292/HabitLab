@@ -1097,14 +1097,18 @@ textarea.finp { resize: vertical; min-height: 80px; }
 
 /* Mobile — match global 767px breakpoint */
 @media (max-width: 767px) {
-    .today-wrap { overflow-x: hidden; overflow-y: hidden; }
+    .today-wrap {
+        overflow-x: hidden;
+        overflow-y: auto;  /* wrap scrolls; avoids unreliable nested flex scroll */
+        align-items: flex-start;
+    }
     .today-list-col {
         width: 100%;
         max-width: 100%;
         border-right: none;
-        flex: 1;
-        min-height: 0;   /* critical: allows overflow-y:auto to scroll */
-        overflow-y: auto;
+        flex: none;          /* let content determine height — wrap handles scroll */
+        overflow-y: visible;
+        min-height: unset;
         /* leave room above the mobile tab bar */
         padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     }
