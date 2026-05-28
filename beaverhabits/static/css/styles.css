@@ -921,8 +921,8 @@ textarea.finp { resize: vertical; min-height: 80px; }
     .today-scroll-body { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
     .toast { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
     .detail-panel { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
-    .mobile-tab { font-size: 9px; gap: 1px; padding: 3px 0; }
-    .mobile-tab svg { width: 19px; height: 19px; }
+    .mobile-tab { font-size: 9px; gap: 0px; padding: 2px 0; }
+    .mobile-tab svg { width: 18px; height: 18px; }
 }
 
 /* ── Today tab (see "Today Tab" block below for active styles) ── */
