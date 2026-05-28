@@ -19,11 +19,8 @@ class Settings(BaseSettings):
     DATA_DIR: str = USER_DATA_FOLDER
 
     # Auth
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
     JWT_SECRET: str = "SECRET"
     JWT_LIFETIME_SECONDS: int = 60 * 60 * 24 * 30  # 30 days
-    TRUSTED_EMAIL_HEADER: str = ""
-    TRUSTED_LOCAL_EMAIL: str = ""
 
     # Timezone: if set, overrides the configured timezone for all users.
     # Use standard IANA timezone names, e.g. "America/New_York", "Europe/London", "Asia/Tokyo".
@@ -47,9 +44,6 @@ class Settings(BaseSettings):
 
     def is_dev(self):
         return self.ENV == "dev"
-
-    def is_trusted_env(self):
-        return self.TRUSTED_LOCAL_EMAIL
 
     @field_validator("TIME_ZONE")
     @classmethod

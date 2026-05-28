@@ -1,3 +1,4 @@
+# habitlab/main.py
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -5,10 +6,11 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
-from habitlab.app.app import init_auth_routes
-from habitlab.app.db import create_db_and_tables
 from habitlab.configs import settings
+from habitlab.db import DB_PATH, init_db
 from habitlab.logger import logger
+from habitlab.migrate import migrate_if_needed
+from habitlab.routes.auth import router as auth_router
 from habitlab.routes.api import init_api_routes
 from habitlab.routes.metrics import init_metrics_routes
 from habitlab.routes.pages import init_page_routes
@@ -23,7 +25,8 @@ STATIC_DIR = PROJECT_ROOT / "static"
 async def lifespan(_: FastAPI):
     if settings.DEBUG:
         logger.info("Debug mode enabled")
-    await create_db_and_tables()
+    await migrate_if_needed(DB_PATH)
+    await init_db()
     yield
 
 
@@ -36,7 +39,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 init_metrics_routes(app)
-init_auth_routes(app)
+app.include_router(auth_router)
 init_api_routes(app)
 init_page_routes(app)
 
@@ -59,8 +62,6 @@ async def request_timing(request: Request, call_next):
 
 @app.middleware("http")
 async def js_no_cache(request: Request, call_next):
-    """Force revalidation of JS files so cached stale modules never silently break
-    module imports (e.g. habits.js imports monthly.js without a version string)."""
     response = await call_next(request)
     path = request.url.path
     if path.startswith("/static/js/") and path.endswith(".js"):
