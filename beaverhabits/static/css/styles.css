@@ -1340,6 +1340,20 @@ textarea.finp { resize: vertical; min-height: 80px; }
     word-break: break-word;
 }
 
+.tl-task-edit-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px solid var(--accent);
+    border-radius: 0;
+    padding: 0;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-family: inherit;
+    outline: none;
+    min-width: 0;
+}
+
 .tl-task-del {
     background: none;
     border: none;
