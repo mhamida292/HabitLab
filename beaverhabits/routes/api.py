@@ -401,22 +401,8 @@ def _scoped_percent(
     return round(hits / denom * 100, 1)
 
 
-@api_router.get("/habits/{habit_id}/stats", tags=["habits"])
-async def get_habit_stats(
-    habit_id: str,
-    today: str | None = Query(None, description="Client local date YYYY-MM-DD; falls back to server UTC if omitted"),
-    user: User = Depends(current_active_user),
-):
-    habit = await _get_user_habit(user, habit_id)
+def _compute_habit_stats(habit, today: datetime.date) -> dict:
     target = habit.target_count
-    # Prefer client-supplied local date to avoid UTC vs local-timezone mismatch
-    if today:
-        try:
-            today = datetime.date.fromisoformat(today)
-        except ValueError:
-            today = datetime.date.today()
-    else:
-        today = datetime.date.today()
     done_dates = sorted(
         (r.day for r in habit.records if r.count >= target),
         reverse=True,
@@ -430,19 +416,15 @@ async def get_habit_stats(
         cursor -= datetime.timedelta(days=1)
 
     started = habit.date_started
-
-    # Monthly metrics
     month_start = today.replace(day=1)
-    monthly_records = [r for r in habit.records if r.day >= month_start and r.day <= today]
-    monthly_checkins = sum(1 for r in monthly_records if r.count >= target)
+    monthly_checkins = sum(
+        1 for r in habit.records if month_start <= r.day <= today and r.count >= target
+    )
 
-    # All-time rate
     sub_goals = habit.sub_goals or []
     effective_start = started
 
     if sub_goals:
-        # Sub-goal habit: total individual goals done / total possible since tracking started
-        # Effective start = earliest day with any sub-goal recorded (or date_started)
         records_with_sg = [r for r in habit.records if r.day <= today and r.sub_goals_done]
         if records_with_sg:
             earliest_sg = min(r.day for r in records_with_sg)
@@ -453,16 +435,12 @@ async def get_habit_stats(
         total_possible = len(sub_goals) * days_since_start
         all_time_rate = min(100.0, round(total_sg_done / total_possible * 100, 1))
     else:
-        # Regular habit: fully-done days / days elapsed
-        # Use earliest done date if it precedes date_started (retroactive checks)
         if done_dates:
             earliest_done = min(done_dates)
             if earliest_done < effective_start:
                 effective_start = earliest_done
         days_since_start = max(1, (today - effective_start).days + 1)
         all_time_rate = min(100.0, round(len(done_dates) / days_since_start * 100, 1))
-
-    total_completion = sum(r.count for r in habit.records)
 
     return {
         "streak": streak,
@@ -474,8 +452,36 @@ async def get_habit_stats(
         "date_started": started.isoformat(),
         "monthly_checkins": monthly_checkins,
         "all_time_rate": all_time_rate,
-        "total_completion": total_completion,
+        "total_completion": sum(r.count for r in habit.records),
     }
+
+
+def _parse_today(today: str | None) -> datetime.date:
+    if today:
+        try:
+            return datetime.date.fromisoformat(today)
+        except ValueError:
+            pass
+    return datetime.date.today()
+
+
+@api_router.get("/habits/stats", tags=["habits"])
+async def get_all_habits_stats(
+    today: str | None = Query(None),
+    habit_list: HabitList = Depends(current_habit_list),
+):
+    today_date = _parse_today(today)
+    return {h.id: _compute_habit_stats(h, today_date) for h in habit_list.habits}
+
+
+@api_router.get("/habits/{habit_id}/stats", tags=["habits"])
+async def get_habit_stats(
+    habit_id: str,
+    today: str | None = Query(None, description="Client local date YYYY-MM-DD; falls back to server UTC if omitted"),
+    user: User = Depends(current_active_user),
+):
+    habit = await _get_user_habit(user, habit_id)
+    return _compute_habit_stats(habit, _parse_today(today))
 
 
 @api_router.get("/habits/{habit_id}/heatmap", tags=["habits"])

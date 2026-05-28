@@ -781,17 +781,17 @@ function wireDetailMore() {
 
 // ── Add / refresh ─────────────────────────────────────────────
 export async function refreshHabits() {
-    const raw = await api.get('/api/v1/habits');
-    // Enrich with streak/total from stats (batch async)
     const todayParam = localIso();
-    allHabits = await Promise.all(raw.map(async h => {
-        try {
-            const s = await api.get(`/api/v1/habits/${h.id}/stats?today=${todayParam}`);
-            h._streak = s.streak;
-            h._total = s.total;
-        } catch { h._streak = 0; h._total = 0; }
+    const [raw, statsMap] = await Promise.all([
+        api.get('/api/v1/habits'),
+        api.get(`/api/v1/habits/stats?today=${todayParam}`).catch(() => ({})),
+    ]);
+    allHabits = raw.map(h => {
+        const s = statsMap[h.id] || {};
+        h._streak = s.streak ?? 0;
+        h._total  = s.total  ?? 0;
         return h;
-    }));
+    });
     renderWeekStrip();
     renderHabitList();
     updateActiveDayChip();
