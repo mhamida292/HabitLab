@@ -54,10 +54,10 @@ Then visit `http://<host>:8765` and create your master password on first run.
 
 ```bash
 uv sync
-uv run uvicorn beaverhabits.main:app --reload --port 8765
+uv run uvicorn habitlab.main:app --reload --port 8765
 ```
 
-Visit `http://localhost:8765`. Static files are served from `beaverhabits/static/`; templates from `beaverhabits/templates/`. JSON API is under `/api/v1/`. The OpenAPI spec is at `/docs`.
+Visit `http://localhost:8765`. Static files are served from `habitlab/static/`; templates from `habitlab/templates/`. JSON API is under `/api/v1/`. The OpenAPI spec is at `/docs`.
 
 See `CLAUDE.md` for the full developer guide — architecture, patterns, and common gotchas.
 
