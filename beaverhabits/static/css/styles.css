@@ -920,8 +920,8 @@ textarea.finp { resize: vertical; min-height: 80px; }
     .notes-list-col { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
     .toast { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
     .detail-panel { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
-    .mobile-tab { font-size: 11px; gap: 4px; }
-    .mobile-tab svg { width: 22px; height: 22px; }
+    .mobile-tab { font-size: 10px; gap: 2px; padding: 4px 0; }
+    .mobile-tab svg { width: 20px; height: 20px; }
 }
 
 /* ── Today tab (see "Today Tab" block below for active styles) ── */
@@ -1116,6 +1116,13 @@ textarea.finp { resize: vertical; min-height: 80px; }
     /* Keep header text from overflowing on narrow screens */
     .tl-date { font-size: 0.8rem; }
     .tl-done-count { display: none; }
+    /* Sticky header — only content below scrolls */
+    #todayDateNav, .today-progress-bar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--bg-surface);
+    }
 }
 
 /* ── Left column ─────────────────────────────────────────────── */
