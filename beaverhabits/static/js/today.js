@@ -301,6 +301,8 @@ function renderTaskList() {
         if (editable) {
             text.style.cursor = 'text';
             text.addEventListener('click', e => { e.stopPropagation(); enterEditMode(t, text); });
+        } else {
+            text.style.cursor = 'default';
         }
 
         const delBtn = document.createElement('button');
