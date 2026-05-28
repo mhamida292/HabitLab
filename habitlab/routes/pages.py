@@ -28,8 +28,8 @@ def init_page_routes(app: FastAPI) -> None:
     async def login_page(request: Request):
         setup_required = await _setup_required()
         return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "setup_required": setup_required},
+            request, "login.html",
+            {"setup_required": setup_required},
             headers=NO_CACHE_HEADERS,
         )
 
@@ -39,23 +39,21 @@ def init_page_routes(app: FastAPI) -> None:
 
     @app.get("/habits", response_class=HTMLResponse)
     async def habits_page(request: Request):
-        return templates.TemplateResponse(
-            "index.html", {"request": request}, headers=NO_CACHE_HEADERS
-        )
+        return templates.TemplateResponse(request, "index.html", headers=NO_CACHE_HEADERS)
 
     @app.get("/habits/{habit_id}", response_class=HTMLResponse)
     async def habit_detail_page(habit_id: str, request: Request):
         return templates.TemplateResponse(
-            "habit_detail.html",
-            {"request": request, "habit_id": habit_id},
+            request, "habit_detail.html",
+            {"habit_id": habit_id},
             headers=NO_CACHE_HEADERS,
         )
 
     @app.get("/heatmap/{habit_id}", response_class=HTMLResponse)
     async def heatmap_page(habit_id: str, request: Request):
         return templates.TemplateResponse(
-            "heatmap.html",
-            {"request": request, "habit_id": habit_id},
+            request, "heatmap.html",
+            {"habit_id": habit_id},
             headers=NO_CACHE_HEADERS,
         )
 
@@ -65,14 +63,10 @@ def init_page_routes(app: FastAPI) -> None:
 
     @app.get("/notes", response_class=HTMLResponse)
     async def notes_page(request: Request):
-        return templates.TemplateResponse(
-            "notes.html", {"request": request}, headers=NO_CACHE_HEADERS
-        )
+        return templates.TemplateResponse(request, "notes.html", headers=NO_CACHE_HEADERS)
 
     @app.get("/today", response_class=HTMLResponse)
     async def today_page(request: Request):
-        return templates.TemplateResponse(
-            "today.html", {"request": request}, headers=NO_CACHE_HEADERS
-        )
+        return templates.TemplateResponse(request, "today.html", headers=NO_CACHE_HEADERS)
 
 
