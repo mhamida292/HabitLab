@@ -637,7 +637,7 @@ async function renderRecentNotes(habitId) {
     }
 
     addBtn.onclick = () => {
-        location.href = `/notes?new=1&habit_id=${habitId}`;
+        location.href = `/notes?new=1&habit_id=${habitId}&date=${getActiveIso()}`;
     };
 }
 

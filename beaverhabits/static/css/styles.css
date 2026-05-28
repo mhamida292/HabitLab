@@ -657,8 +657,8 @@ textarea.finp { resize: vertical; min-height: 80px; }
 .note-list-meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .note-list-date { font-size: 11px; color: var(--text-muted); }
 .note-habit-pill {
-    font-size: 9px; font-weight: 700; background: #14532d22;
-    color: #4ade80; border-radius: 4px; padding: 1px 5px;
+    font-size: 9px; font-weight: 700; background: var(--accent-sel);
+    color: var(--accent); border-radius: 4px; padding: 1px 5px;
 }
 .note-list-preview {
     font-size: 12px; color: var(--text-secondary); margin-top: 2px;

@@ -655,6 +655,7 @@ class CreateNote(BaseModel):
     title: str
     body: str = ""
     habit_id: str | None = None
+    created_at: str | None = None
 
 
 class UpdateNote(BaseModel):
@@ -680,7 +681,7 @@ async def post_note(
     user: User = Depends(current_active_user),
 ):
     habit_list = await _get_or_create_habit_list(user)
-    created = habit_list.add_note(note.title, note.body, note.habit_id)
+    created = habit_list.add_note(note.title, note.body, note.habit_id, note.created_at)
     await _storage.save_user_habit_list(user, habit_list)
     return created
 

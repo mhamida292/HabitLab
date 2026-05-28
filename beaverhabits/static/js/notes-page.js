@@ -115,8 +115,9 @@ async function init() {
     // Auto-create if ?new=1
     if (params.get('new') === '1') {
         const habitId = params.get('habit_id') || null;
+        const date = params.get('date') || null;
         if (!noteId) { // don't create if we're opening an existing note
-            await createNote(habitId);
+            await createNote(habitId, date);
             history.replaceState({}, '', '/notes');
         }
     }
@@ -376,13 +377,11 @@ function openCardEditor(id) {
 }
 
 // ── CRUD ───────────────────────────────────────────────────────────────────
-async function createNote(habitId = null) {
+async function createNote(habitId = null, date = null) {
     try {
-        const note = await api.post('/api/v1/notes', {
-            title: '',
-            body: '',
-            habit_id: habitId,
-        });
+        const payload = { title: '', body: '', habit_id: habitId };
+        if (date) payload.created_at = date + 'T00:00:00';
+        const note = await api.post('/api/v1/notes', payload);
         state.notes.unshift(note);
         state.selectedId = note.id;
         if (state.view === 'grid') setView('list', false);

@@ -411,13 +411,13 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     def notes(self) -> list[dict]:
         return self.data.setdefault("notes", [])
 
-    def add_note(self, title: str, body: str = "", habit_id: str | None = None) -> dict:
+    def add_note(self, title: str, body: str = "", habit_id: str | None = None, created_at: str | None = None) -> dict:
         note = {
             "id": uuid.uuid4().hex[:8],
             "title": title.strip() or "Untitled",
             "body": body,
             "habit_id": habit_id,
-            "created_at": datetime.datetime.now().isoformat(timespec="seconds"),
+            "created_at": created_at or datetime.datetime.now().isoformat(timespec="seconds"),
         }
         self.data.setdefault("notes", []).append(note)
         return note
