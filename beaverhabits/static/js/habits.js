@@ -611,18 +611,17 @@ async function renderRecentNotes(habitId) {
 
     try {
         const notes = await api.get(`/api/v1/notes?habit_id=${habitId}`);
-        const recent = notes.slice(0, 2); // already newest-first from API
+        const recent = notes.slice(0, 2);
 
         for (const note of recent) {
             const item = document.createElement('div');
             item.className = 'detail-note-item';
-            item.addEventListener('click', () => {
-                location.href = `/notes?id=${note.id}`;
-            });
+            item.addEventListener('click', () => { location.href = `/notes?id=${note.id}`; });
 
             const date = document.createElement('div');
             date.className = 'detail-note-date';
-            date.textContent = new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            date.textContent = new Date(note.created_at + (note.created_at.includes('T') ? '' : 'T00:00:00'))
+                .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
             const title = document.createElement('div');
             title.className = 'detail-note-title';
@@ -636,9 +635,79 @@ async function renderRecentNotes(habitId) {
         // silently fail — notes are non-critical
     }
 
-    addBtn.onclick = () => {
-        location.href = `/notes?new=1&habit_id=${habitId}&date=${getActiveIso()}`;
+    addBtn.onclick = () => openInlineNoteComposer(habitId, addBtn);
+}
+
+function openInlineNoteComposer(habitId, addBtn) {
+    addBtn.style.display = 'none';
+
+    const composer = document.createElement('div');
+    composer.className = 'detail-note-composer';
+
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.className = 'detail-note-composer-title';
+    titleInput.placeholder = 'Title';
+
+    const bodyInput = document.createElement('textarea');
+    bodyInput.className = 'detail-note-composer-body';
+    bodyInput.placeholder = 'Write something…';
+    bodyInput.rows = 3;
+
+    const actions = document.createElement('div');
+    actions.className = 'detail-note-composer-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'detail-note-composer-save';
+    saveBtn.textContent = 'Save';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'detail-note-composer-cancel';
+    cancelBtn.textContent = 'Cancel';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+    composer.appendChild(titleInput);
+    composer.appendChild(bodyInput);
+    composer.appendChild(actions);
+    addBtn.parentNode.appendChild(composer);
+    titleInput.focus();
+
+    cancelBtn.onclick = () => {
+        composer.remove();
+        addBtn.style.display = '';
     };
+
+    saveBtn.onclick = async () => {
+        const title = titleInput.value.trim();
+        const body = bodyInput.value.trim();
+        if (!title && !body) {
+            composer.remove();
+            addBtn.style.display = '';
+            return;
+        }
+        saveBtn.disabled = true;
+        try {
+            await api.post('/api/v1/notes', {
+                title: title || 'Untitled',
+                body,
+                habit_id: habitId,
+                created_at: getActiveIso() + 'T00:00:00',
+            });
+            composer.remove();
+            addBtn.style.display = '';
+            await renderRecentNotes(habitId);
+        } catch (e) {
+            toast('Failed to save note', 'error');
+            saveBtn.disabled = false;
+        }
+    };
+
+    // Ctrl+Enter saves
+    composer.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveBtn.click();
+        if (e.key === 'Escape') cancelBtn.click();
+    });
 }
 
 // ── Refresh detail stat cards (called after each toggle) ──────

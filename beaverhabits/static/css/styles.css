@@ -835,6 +835,34 @@ textarea.finp { resize: vertical; min-height: 80px; }
     background: transparent; width: 100%; margin-top: 4px;
 }
 .detail-notes-add:hover { border-color: var(--accent); color: var(--accent-light); }
+.detail-note-composer {
+    border: 1px solid var(--accent); border-radius: 8px;
+    background: var(--bg-surface); overflow: hidden; margin-top: 4px;
+}
+.detail-note-composer-title {
+    width: 100%; padding: 8px 10px; font-size: 12px; font-weight: 600;
+    color: var(--text-primary); background: transparent;
+    border: none; border-bottom: 1px solid var(--border); outline: none; box-sizing: border-box;
+}
+.detail-note-composer-body {
+    width: 100%; padding: 8px 10px; font-size: 12px; color: var(--text-primary);
+    background: transparent; border: none; outline: none;
+    resize: none; box-sizing: border-box; font-family: inherit; line-height: 1.5;
+}
+.detail-note-composer-actions {
+    display: flex; justify-content: flex-end; gap: 6px;
+    padding: 6px 10px; border-top: 1px solid var(--border);
+}
+.detail-note-composer-save {
+    padding: 4px 12px; font-size: 11px; font-weight: 600;
+    background: var(--accent); color: #fff; border: none; border-radius: 5px; cursor: pointer;
+}
+.detail-note-composer-save:disabled { opacity: .5; cursor: default; }
+.detail-note-composer-cancel {
+    padding: 4px 10px; font-size: 11px; font-weight: 600;
+    background: transparent; color: var(--text-muted);
+    border: 1px solid var(--border); border-radius: 5px; cursor: pointer;
+}
 
 /* Detail panel stat-grid override (2x2 in left col) */
 .detail-col-left .stat-grid {
