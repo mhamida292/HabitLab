@@ -38,6 +38,10 @@ def init_page_routes(app: FastAPI) -> None:
 
     @app.get("/", response_class=HTMLResponse)
     async def index_page(request: Request):
+        return RedirectResponse(url="/today")
+
+    @app.get("/habits", response_class=HTMLResponse)
+    async def habits_page(request: Request):
         return templates.TemplateResponse(
             "index.html", {"request": request}, headers=NO_CACHE_HEADERS
         )
