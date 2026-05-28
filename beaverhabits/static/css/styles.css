@@ -140,7 +140,7 @@
     --rl:   12px;
     --mono: 'JetBrains Mono', monospace;
     --sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
-    --nav-w:    64px;
+    --nav-w:    72px;
     --list-w:   420px;
     --transition: .14s ease;
 }
@@ -169,15 +169,16 @@ button, input, select, textarea { font-family: inherit; }
     cursor: default; margin-bottom: 4px;
 }
 .nav-item {
-    width: 44px; height: 44px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
+    width: 56px; min-height: 48px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     cursor: pointer; font-size: 19px; color: var(--text-muted);
     transition: background var(--transition), color var(--transition);
-    border: none; background: none; text-decoration: none;
+    border: none; background: none; text-decoration: none; padding: 6px 0;
 }
-.nav-item svg { width: 22px; height: 22px; }
+.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
 .nav-item:hover { background: var(--bg-elevated); color: var(--text-secondary); }
 .nav-item.active { background: var(--accent-sel); color: var(--accent-light); }
+.nav-label { font-size: 9px; font-weight: 600; letter-spacing: .02em; line-height: 1; }
 .nav-spacer { flex: 1; }
 
 /* ── Panels ─────────────────────────────────────────────────  */
