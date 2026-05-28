@@ -6,7 +6,7 @@ from typing import List, Literal, Optional, Protocol, Self
 
 from dataclasses_json import DataClassJsonMixin
 
-from habitlab.app.db import User
+from habitlab.models import User
 from habitlab.utils import PERIOD_TYPES, D
 
 

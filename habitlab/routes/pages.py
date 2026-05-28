@@ -1,12 +1,10 @@
 import time
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
-
-from habitlab.app.db import User, get_async_session
+from habitlab import db as habitdb
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=PROJECT_ROOT / "templates")
@@ -21,15 +19,14 @@ NO_CACHE_HEADERS = {
 }
 
 
-async def _has_user(session) -> bool:
-    result = await session.execute(select(func.count()).select_from(User))
-    return result.scalar_one() > 0
+async def _setup_required() -> bool:
+    return await habitdb.get_password_hash() is None
 
 
 def init_page_routes(app: FastAPI) -> None:
     @app.get("/login", response_class=HTMLResponse)
-    async def login_page(request: Request, session=Depends(get_async_session)):
-        setup_required = not await _has_user(session)
+    async def login_page(request: Request):
+        setup_required = await _setup_required()
         return templates.TemplateResponse(
             "login.html",
             {"request": request, "setup_required": setup_required},

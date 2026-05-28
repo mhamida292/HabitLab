@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Upl
 from habitlab.logger import logger
 from pydantic import BaseModel
 
-from habitlab.app import crud as auth_crud
-from habitlab.app.db import User
-from habitlab.app.dependencies import current_active_user
+from habitlab.auth import current_active_user
+from habitlab.models import User
 from habitlab.configs import settings
 from habitlab.core.completions import CStatus, get_habit_date_completion
 from habitlab.storage import get_user_dict_storage
@@ -142,7 +141,7 @@ async def post_habits(
     habit_list = await _get_or_create_habit_list(user)
 
     id = await habit_list.add(habit.name)
-    logger.info(f"Created new habit {id} for user {user.email}")
+    logger.info(f"Created new habit {id} for user {user.id}")
 
     created = await habit_list.get_habit_by(id)
     if created is not None:
@@ -538,22 +537,6 @@ async def post_upload(
     (upload_dir / name).write_bytes(contents)
     return {"url": f"/uploads/{name}"}
 
-
-@api_router.get("/tokens", tags=["tokens"])
-async def get_token(user: User = Depends(current_active_user)):
-    token = await auth_crud.get_user_api_token(user)
-    return {"token": token}
-
-
-@api_router.post("/tokens", tags=["tokens"])
-async def create_token(user: User = Depends(current_active_user)):
-    token = await auth_crud.create_user_api_token(user)
-    return {"token": token}
-
-
-@api_router.delete("/tokens", tags=["tokens"], status_code=204)
-async def delete_token(user: User = Depends(current_active_user)):
-    await auth_crud.delete_user_api_token(user)
 
 
 @api_router.get("/export", tags=["data"])
