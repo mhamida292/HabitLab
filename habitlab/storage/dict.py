@@ -2,8 +2,8 @@ import datetime
 import uuid
 from dataclasses import dataclass, field
 
-from beaverhabits.logger import logger
-from beaverhabits.storage.storage import (
+from habitlab.logger import logger
+from habitlab.storage.storage import (
     Backup,
     CheckedRecord,
     Habit,
@@ -12,7 +12,7 @@ from beaverhabits.storage.storage import (
     HabitOrder,
     HabitStatus,
 )
-from beaverhabits.utils import generate_short_hash
+from habitlab.utils import generate_short_hash
 
 DAY_MASK = "%Y-%m-%d"
 MONTH_MASK = "%Y/%m"

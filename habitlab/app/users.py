@@ -10,8 +10,8 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.db import SQLAlchemyUserDatabase
 
-from beaverhabits.configs import settings
-from beaverhabits.logger import logger
+from habitlab.configs import settings
+from habitlab.logger import logger
 
 from .db import User, get_user_db
 

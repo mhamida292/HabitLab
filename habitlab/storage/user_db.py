@@ -1,7 +1,7 @@
-from beaverhabits.app import crud
-from beaverhabits.app.db import User
-from beaverhabits.storage.dict import DictHabitList
-from beaverhabits.storage.storage import UserStorage
+from habitlab.app import crud
+from habitlab.app.db import User
+from habitlab.storage.dict import DictHabitList
+from habitlab.storage.storage import UserStorage
 
 
 class UserDatabaseStorage(UserStorage[DictHabitList]):

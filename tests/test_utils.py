@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from beaverhabits.utils import format_date_difference
+from habitlab.utils import format_date_difference
 
 
 def s2d(date_str):

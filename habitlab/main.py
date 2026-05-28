@@ -5,13 +5,13 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
-from beaverhabits.app.app import init_auth_routes
-from beaverhabits.app.db import create_db_and_tables
-from beaverhabits.configs import settings
-from beaverhabits.logger import logger
-from beaverhabits.routes.api import init_api_routes
-from beaverhabits.routes.metrics import init_metrics_routes
-from beaverhabits.routes.pages import init_page_routes
+from habitlab.app.app import init_auth_routes
+from habitlab.app.db import create_db_and_tables
+from habitlab.configs import settings
+from habitlab.logger import logger
+from habitlab.routes.api import init_api_routes
+from habitlab.routes.metrics import init_metrics_routes
+from habitlab.routes.pages import init_page_routes
 
 logger.info("Starting HabitLab...")
 

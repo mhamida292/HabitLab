@@ -1,6 +1,6 @@
 import datetime
 import pytest
-from beaverhabits.storage.dict import DictHabitList
+from habitlab.storage.dict import DictHabitList
 
 
 @pytest.fixture

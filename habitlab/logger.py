@@ -8,4 +8,4 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     stream=sys.stdout,
 )
-logger = logging.getLogger("beaverhabits")
+logger = logging.getLogger("habitlab")

@@ -1,7 +1,7 @@
 import pytest
 import datetime
-from beaverhabits.storage.dict import DictHabitList, DictHabit
-from beaverhabits.routes.api import format_json_response, _record_to_dict
+from habitlab.storage.dict import DictHabitList, DictHabit
+from habitlab.routes.api import format_json_response, _record_to_dict
 
 
 @pytest.fixture

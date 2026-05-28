@@ -16,7 +16,7 @@ from sqlalchemy.orm import (
     relationship,
 )
 
-from beaverhabits.configs import settings
+from habitlab.configs import settings
 
 DATABASE_URL = settings.DATABASE_URL
 

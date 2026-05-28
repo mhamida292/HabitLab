@@ -1,4 +1,4 @@
-from beaverhabits.storage.dict import DictHabitList, DictHabit
+from habitlab.storage.dict import DictHabitList, DictHabit
 import datetime
 
 def make_habit(name="Salah", sub_goals=None):

@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from beaverhabits.logger import logger
+from habitlab.logger import logger
 
 from .db import (
     HabitListModel,

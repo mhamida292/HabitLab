@@ -2,7 +2,7 @@
 authors = [
     {name = "Henry Zhu", email = "daya0576@gmail.com"},
 ]
-name = "beaverhabits"
+name = "habitlab"
 dynamic = ["version"]
 requires-python = "<4.0,>=3.12"
 dependencies = [
@@ -41,7 +41,7 @@ e2e = [
 ]
 
 [project.scripts]
-main = "beaverhabits.routes:main"
+main = "habitlab.routes:main"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]

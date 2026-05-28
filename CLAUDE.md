@@ -24,7 +24,7 @@ This is a self-hosted habit tracker. FastAPI + Jinja2 backend, vanilla-JS ES-mod
 ## Project Layout
 
 ```
-beaverhabits/
+habitlab/
 ├── main.py                     # App factory, middleware, static-file no-cache
 ├── configs.py                  # Settings (env vars)
 ├── routes/
@@ -65,7 +65,7 @@ beaverhabits/
 
 ```bash
 uv sync
-uv run uvicorn beaverhabits.main:app --reload --port 8765
+uv run uvicorn habitlab.main:app --reload --port 8765
 ```
 
 Visit `http://localhost:8765`. Create a master password on first run.

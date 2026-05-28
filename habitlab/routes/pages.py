@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
-from beaverhabits.app.db import User, get_async_session
+from habitlab.app.db import User, get_async_session
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=PROJECT_ROOT / "templates")

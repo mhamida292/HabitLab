@@ -6,8 +6,8 @@ from typing import List, Literal, Optional, Protocol, Self
 
 from dataclasses_json import DataClassJsonMixin
 
-from beaverhabits.app.db import User
-from beaverhabits.utils import PERIOD_TYPES, D
+from habitlab.app.db import User
+from habitlab.utils import PERIOD_TYPES, D
 
 
 class CheckedRecord(Protocol):

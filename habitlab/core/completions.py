@@ -2,9 +2,9 @@ import datetime
 from collections import defaultdict
 from enum import Enum, auto
 
-from beaverhabits.logger import logger
-from beaverhabits.storage.storage import EVERY_DAY, Habit, HabitFrequency
-from beaverhabits.utils import date_move, get_period_fist_day, timeit
+from habitlab.logger import logger
+from habitlab.storage.storage import EVERY_DAY, Habit, HabitFrequency
+from habitlab.utils import date_move, get_period_fist_day, timeit
 
 CStatus = Enum("CStatus", [("DONE", auto()), ("PERIOD_DONE", auto())])
 

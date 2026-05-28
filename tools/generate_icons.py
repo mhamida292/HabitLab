@@ -8,7 +8,7 @@ from pathlib import Path
 
 import cairosvg
 
-STATIC = Path(__file__).parent.parent / "beaverhabits" / "static"
+STATIC = Path(__file__).parent.parent / "habitlab" / "static"
 SVG = STATIC / "favicon.svg"
 
 ICONS = [

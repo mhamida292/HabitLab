@@ -2,12 +2,12 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from beaverhabits.app import crud as auth_crud
-from beaverhabits.app.db import User, get_async_session
-from beaverhabits.app.dependencies import current_active_user
-from beaverhabits.app.schemas import UserCreate
-from beaverhabits.app.users import auth_backend, fastapi_users, get_user_manager
-from beaverhabits.app.users import UserManager
+from habitlab.app import crud as auth_crud
+from habitlab.app.db import User, get_async_session
+from habitlab.app.dependencies import current_active_user
+from habitlab.app.schemas import UserCreate
+from habitlab.app.users import auth_backend, fastapi_users, get_user_manager
+from habitlab.app.users import UserManager
 
 
 async def _setup_required(session: AsyncSession) -> bool:
@@ -43,11 +43,11 @@ def init_auth_routes(app: FastAPI) -> None:
         session: AsyncSession = Depends(get_async_session),
         user_manager: UserManager = Depends(get_user_manager),
     ):
-        from beaverhabits.logger import logger
+        from habitlab.logger import logger
         if not await _setup_required(session):
             raise HTTPException(status_code=409, detail="Setup already completed")
         try:
-            create = UserCreate(email="admin@beaverhabits.app", password=body.password)
+            create = UserCreate(email="admin@habitlab.app", password=body.password)
             user = await user_manager.create(create)
             return {"id": str(user.id), "email": user.email}
         except Exception as exc:

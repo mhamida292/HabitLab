@@ -1,5 +1,5 @@
-from beaverhabits.storage.storage import UserStorage
-from beaverhabits.storage.user_db import UserDatabaseStorage
+from habitlab.storage.storage import UserStorage
+from habitlab.storage.user_db import UserDatabaseStorage
 
 user_database_storage = UserDatabaseStorage()
 

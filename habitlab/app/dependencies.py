@@ -4,15 +4,15 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security.utils import get_authorization_scheme_param
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from beaverhabits.app.auth import (
+from habitlab.app.auth import (
     user_create,
     user_from_token,
     user_get_by_email,
 )
-from beaverhabits.app.crud import get_user_by_api_token
-from beaverhabits.app.db import User
-from beaverhabits.configs import settings
-from beaverhabits.logger import logger
+from habitlab.app.crud import get_user_by_api_token
+from habitlab.app.db import User
+from habitlab.configs import settings
+from habitlab.logger import logger
 
 
 def get_bearer_token(request: Request) -> Optional[str]:

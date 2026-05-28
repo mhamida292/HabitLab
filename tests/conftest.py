@@ -4,11 +4,11 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from fastapi_users.db import SQLAlchemyUserDatabase
 
-from beaverhabits.main import app
-from beaverhabits.app.db import Base, get_async_session, User
-from beaverhabits.app.schemas import UserCreate
-from beaverhabits.app.users import UserManager
-from beaverhabits.app.dependencies import current_active_user
+from habitlab.main import app
+from habitlab.app.db import Base, get_async_session, User
+from habitlab.app.schemas import UserCreate
+from habitlab.app.users import UserManager
+from habitlab.app.dependencies import current_active_user
 
 
 @pytest.fixture

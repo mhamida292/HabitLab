@@ -1,6 +1,6 @@
 # tests/test_notes_api.py
 import pytest
-from beaverhabits.storage.dict import DictHabitList
+from habitlab.storage.dict import DictHabitList
 
 
 @pytest.fixture

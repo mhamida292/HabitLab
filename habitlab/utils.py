@@ -17,11 +17,11 @@ from fastapi import HTTPException
 from psutil._common import bytes2human
 from starlette import status
 
-from beaverhabits.configs import settings
+from habitlab.configs import settings
 
 PRIMARY_COLOR = "#6796cf"
 
-from beaverhabits.logger import logger
+from habitlab.logger import logger
 
 WEEK_DAYS = 7
 

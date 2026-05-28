@@ -4,17 +4,17 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile
-from beaverhabits.logger import logger
+from habitlab.logger import logger
 from pydantic import BaseModel
 
-from beaverhabits.app import crud as auth_crud
-from beaverhabits.app.db import User
-from beaverhabits.app.dependencies import current_active_user
-from beaverhabits.configs import settings
-from beaverhabits.core.completions import CStatus, get_habit_date_completion
-from beaverhabits.storage import get_user_dict_storage
-from beaverhabits.storage.dict import DictHabitList
-from beaverhabits.storage.storage import (
+from habitlab.app import crud as auth_crud
+from habitlab.app.db import User
+from habitlab.app.dependencies import current_active_user
+from habitlab.configs import settings
+from habitlab.core.completions import CStatus, get_habit_date_completion
+from habitlab.storage import get_user_dict_storage
+from habitlab.storage.dict import DictHabitList
+from habitlab.storage.storage import (
     Habit,
     HabitFrequency,
     HabitList,
@@ -580,7 +580,7 @@ async def import_data(
 async def seed_sample_data(user: User = Depends(current_active_user)):
     """Populate the user's habit list with a few sample habits and recent ticks."""
     import random
-    from beaverhabits.utils import generate_short_hash
+    from habitlab.utils import generate_short_hash
 
     habit_list = await _get_or_create_habit_list(user)
     today = datetime.date.today()

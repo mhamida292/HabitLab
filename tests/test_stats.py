@@ -1,7 +1,7 @@
 import datetime
 import pytest
 
-from beaverhabits.routes.api import _scoped_percent
+from habitlab.routes.api import _scoped_percent
 
 
 def d(s: str) -> datetime.date:
