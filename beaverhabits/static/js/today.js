@@ -557,7 +557,8 @@ async function updateTaskText(id, newText) {
     render();
     try {
         const updated = await api.patch(`/api/v1/tasks/${id}`, { text: newText });
-        taskItems.find(t => t.id === id).text = updated.text;
+        const task = taskItems.find(t => t.id === id);
+        if (task) task.text = updated.text;
     } catch (err) {
         toast(err?.message || 'Failed to update task', 'error');
     } finally {
