@@ -5,19 +5,26 @@ from typing import Optional
 import jwt
 from fastapi import HTTPException, Request
 from fastapi.security.utils import get_authorization_scheme_param
-from passlib.hash import bcrypt
+from passlib.context import CryptContext
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from habitlab.configs import settings
 from habitlab.models import User
 
+# bcrypt for new hashes; argon2 listed so we can verify legacy hashes from
+# FastAPI-Users 14.x which used argon2 as its primary algorithm.
+_pwd_ctx = CryptContext(schemes=["bcrypt", "argon2"], deprecated=["argon2"])
+
 
 def hash_password(plain: str) -> str:
-    return bcrypt.hash(plain)
+    return _pwd_ctx.hash(plain)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.verify(plain, hashed)
+    try:
+        return _pwd_ctx.verify(plain, hashed)
+    except Exception:
+        return False
 
 
 def create_token() -> str:

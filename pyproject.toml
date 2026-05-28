@@ -17,7 +17,7 @@ dependencies = [
     "dataclasses-json>=0.6.7",
     "psutil>=7.0.0",
     "python-multipart>=0.0.20",
-    "passlib[bcrypt]>=1.7.4",
+    "passlib[bcrypt,argon2]>=1.7.4",
     "pyjwt>=2.10.1",
 ]
 description = ""
