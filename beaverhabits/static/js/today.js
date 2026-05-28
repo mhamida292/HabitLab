@@ -277,27 +277,31 @@ function renderTaskList() {
     el.innerHTML = '';
 
     const busy = _inflight > 0;
+    const editable = !busy && viewDay >= TODAY;
 
     taskItems.forEach(t => {
         const row = document.createElement('div');
         row.className = 'tl-task-row' + (busy ? ' busy' : '') + (t.done ? ' done' : '');
-        row.addEventListener('click', () => { if (!busy) toggleTask(t.id); });
 
         const handle = document.createElement('div');
         handle.className = 'tl-drag-handle';
         handle.textContent = '⠿';
         handle.addEventListener('click', e => e.stopPropagation());
 
-        // Same-size circle as habit rows (26px)
         const circle = document.createElement('div');
         circle.className = 'tl-task-circle' + (t.done ? ' done' : '');
         if (t.done) circle.innerHTML = checkmarkSvg(11);
+        circle.addEventListener('click', e => { e.stopPropagation(); if (!busy) toggleTask(t.id); });
 
         const text = document.createElement('span');
         text.className = 'tl-task-name';
         text.textContent = t.carriedFrom
             ? `${t.text} ↑ ${isoLabel(t.carriedFrom)}`
             : t.text;
+        if (editable) {
+            text.style.cursor = 'text';
+            text.addEventListener('click', e => { e.stopPropagation(); enterEditMode(t, text); });
+        }
 
         const delBtn = document.createElement('button');
         delBtn.className = 'tl-task-del';
@@ -544,6 +548,56 @@ async function deleteTask(id) {
         _inflight--;
         render();
     }
+}
+
+async function updateTaskText(id, newText) {
+    _inflight++;
+    render();
+    try {
+        const updated = await api.patch(`/api/v1/tasks/${id}`, { text: newText });
+        taskItems.find(t => t.id === id).text = updated.text;
+    } catch (err) {
+        toast(err?.message || 'Failed to update task', 'error');
+    } finally {
+        _inflight--;
+        render();
+    }
+}
+
+function enterEditMode(t, textSpan) {
+    if (_inflight > 0) return;
+    let saved = false;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tl-task-edit-input';
+    input.value = t.text;
+    textSpan.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function save() {
+        if (saved) return;
+        saved = true;
+        const val = input.value.trim();
+        if (val && val !== t.text) {
+            updateTaskText(t.id, val);
+        } else {
+            render(); // restore original (empty or unchanged)
+        }
+    }
+
+    function cancel() {
+        if (saved) return;
+        saved = true;
+        render();
+    }
+
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { cancel(); }
+    });
+    input.addEventListener('blur', save);
 }
 
 async function toggleHabit(h) {
