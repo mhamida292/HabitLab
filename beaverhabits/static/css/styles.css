@@ -918,10 +918,11 @@ textarea.finp { resize: vertical; min-height: 80px; }
     .mobile-tabs { height: calc(58px + env(safe-area-inset-bottom, 0px)); }
     .habit-list { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
     .notes-list-col { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+    .today-scroll-body { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
     .toast { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
     .detail-panel { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
-    .mobile-tab { font-size: 10px; gap: 2px; padding: 4px 0; }
-    .mobile-tab svg { width: 20px; height: 20px; }
+    .mobile-tab { font-size: 9px; gap: 1px; padding: 3px 0; }
+    .mobile-tab svg { width: 19px; height: 19px; }
 }
 
 /* ── Today tab (see "Today Tab" block below for active styles) ── */
@@ -1069,20 +1070,25 @@ textarea.finp { resize: vertical; min-height: 80px; }
 
 .today-wrap {
     display: flex;
-    flex: 1;          /* fill the full panels area */
-    height: 100%;
+    flex: 1;
     overflow: hidden;
 }
 
 .today-list-col {
-    width: var(--list-w);      /* 420px — matches habits list column */
+    width: var(--list-w);
     flex-shrink: 0;
-    min-height: 0;             /* lets flex child shrink so overflow-y:auto actually scrolls */
-    background: var(--bg-surface); /* matches nav rail + habits list */
+    background: var(--bg-surface);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    overflow: hidden;          /* header stays fixed; scroll-body scrolls */
+}
+
+.today-scroll-body {
+    flex: 1;
     overflow-y: auto;
+    min-height: 0;
+    padding-bottom: 12px;
 }
 
 .today-stats-col {
@@ -1097,32 +1103,18 @@ textarea.finp { resize: vertical; min-height: 80px; }
 
 /* Mobile — match global 767px breakpoint */
 @media (max-width: 767px) {
-    .today-wrap {
-        overflow-x: hidden;
-        overflow-y: auto;  /* wrap scrolls; avoids unreliable nested flex scroll */
-        align-items: flex-start;
-    }
     .today-list-col {
         width: 100%;
         max-width: 100%;
         border-right: none;
-        flex: none;          /* let content determine height — wrap handles scroll */
-        overflow-y: visible;
-        min-height: unset;
-        /* leave room above the mobile tab bar */
+        flex: 1;
+    }
+    .today-scroll-body {
         padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     }
     .today-stats-col { display: none; }
-    /* Keep header text from overflowing on narrow screens */
     .tl-date { font-size: 0.8rem; }
     .tl-done-count { display: none; }
-    /* Sticky header — only content below scrolls */
-    #todayDateNav, .today-progress-bar {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: var(--bg-surface);
-    }
 }
 
 /* ── Left column ─────────────────────────────────────────────── */
