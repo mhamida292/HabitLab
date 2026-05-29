@@ -131,11 +131,16 @@ function initSortables() {
             ghostClass: 'tl-sort-ghost',
             onEnd(evt) {
                 if (evt.oldIndex === evt.newIndex) return;
-                // Read new order from DOM, update state, persist
-                pinnedIds = [...pinsEl.querySelectorAll('.tl-habit-group[data-habit-id]')]
+                // Read new visible order, split into defaults vs this-day extras,
+                // and persist each in its new relative order.
+                const ids = [...pinsEl.querySelectorAll('.tl-habit-group[data-habit-id]')]
                     .map(el => el.dataset.habitId);
-                api.put('/api/v1/habits/meta', { pinned_today_ids: pinnedIds })
-                    .catch(() => toast('Failed to save habit order', 'error'));
+                defaultPins = ids.filter(id => defaultPins.includes(id));
+                dayPins = ids.filter(id => dayPins.includes(id) && !defaultPins.includes(id));
+                Promise.all([
+                    api.put('/api/v1/habits/meta', { default_pins: defaultPins }),
+                    api.put('/api/v1/habits/meta', { day_pins_date: viewDay, day_pins_ids: dayPins }),
+                ]).catch(() => toast('Failed to save habit order', 'error'));
             },
         });
     }
@@ -385,6 +390,7 @@ function renderPinControl() {
         star.className = 'tl-pin-star' + (isDefault ? ' on' : '');
         star.textContent = isDefault ? '★' : '☆';
         star.title = isDefault ? 'Shown every day — click to remove' : 'Show every day';
+        star.setAttribute('aria-label', `${h.name}: ${isDefault ? 'remove from every day' : 'show every day'}`);
         star.disabled = readOnly;
         star.addEventListener('click', e => {
             e.preventDefault();
@@ -405,6 +411,7 @@ function renderPinControl() {
             cb.type = 'checkbox';
             cb.checked = dayPins.includes(h.id);
             cb.disabled = readOnly;
+            cb.setAttribute('aria-label', `${h.name}: pin for this day`);
             cb.addEventListener('change', () => toggleDayPin(h.id));
             dayCell.appendChild(cb);
         }
