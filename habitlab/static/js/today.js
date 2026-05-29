@@ -48,7 +48,8 @@ const MAX_DAY = isoAddDays(TODAY, MAX_FUTURE);
 let viewDay = TODAY;
 let taskItems = [];
 let allHabits = [];
-let pinnedIds = [];   // order matters — used for display order
+let defaultPins = [];  // ★ habits — shown every day. order matters.
+let dayPins = [];      // ad-hoc pins for viewDay only. order matters.
 let _inflight = 0;
 let _lastRefresh = 0;
 
@@ -63,11 +64,12 @@ async function loadAll() {
         const [tasks, habits, meta] = await Promise.all([
             api.get(`/api/v1/tasks?date=${viewDay}&carry=${carry}`),
             api.get('/api/v1/habits'),
-            api.get('/api/v1/habits/meta'),
+            api.get(`/api/v1/habits/meta?day=${viewDay}`),
         ]);
         taskItems = tasks;
         allHabits = habits;
-        pinnedIds = meta.pinned_today_ids || [];
+        defaultPins = meta.default_pins || [];
+        dayPins = meta.day_pins_ids || [];
         _lastRefresh = Date.now();
     } catch (err) {
         toast(err?.message || 'Failed to load', 'error');
@@ -76,9 +78,21 @@ async function loadAll() {
 }
 
 // ── Shared stats helper ────────────────────────────────────────────────────────
-// Respects pinnedIds order so drag-reorder is reflected in stats
+// Effective pinned set for the viewed day: defaults first (saved order),
+// then that day's extras (add order), with extras that are also defaults dropped.
+function effectivePinIds() {
+    const extras = dayPins.filter(id => !defaultPins.includes(id));
+    return [...defaultPins, ...extras];
+}
+
+function effectivePins() {
+    return effectivePinIds()
+        .map(id => allHabits.find(h => h.id === id))
+        .filter(Boolean);
+}
+
 function computeStats(day) {
-    const pinned = pinnedIds.map(id => allHabits.find(h => h.id === id)).filter(Boolean);
+    const pinned = effectivePins();
     const habitsDone = pinned.filter(h => {
         const rec = h.records.find(r => r.day === day);
         return rec && rec.done;
@@ -203,8 +217,8 @@ function renderHabitPins() {
     if (!el) return;
     el.innerHTML = '';
 
-    // Use pinnedIds order — drag-reorder updates this array
-    const pinned = pinnedIds.map(id => allHabits.find(h => h.id === id)).filter(Boolean);
+    // Effective set for the viewed day — defaults + this day's extras
+    const pinned = effectivePins();
     if (pinned.length === 0) return;
 
     pinned.forEach(h => {
