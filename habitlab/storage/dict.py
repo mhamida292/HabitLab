@@ -444,15 +444,6 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     def default_pins(self, value: list[str]) -> None:
         self.data["default_pins"] = list(value)
 
-    # Backward compatibility alias (deprecated)
-    @property
-    def today_pinned(self) -> list[str]:
-        return self.default_pins
-
-    @today_pinned.setter
-    def today_pinned(self, value: list[str]) -> None:
-        self.default_pins = value
-
     # ── Tasks ──────────────────────────────────────────────────────────────────
 
     def get_tasks(self, date: str, carry: bool = False) -> list[dict]:

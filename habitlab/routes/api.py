@@ -65,7 +65,7 @@ async def get_habits_meta(
 ):
     return HabitListMeta(
         order=habit_list.order,
-        pinned_today_ids=habit_list.today_pinned,
+        pinned_today_ids=habit_list.default_pins,
     )
 
 
@@ -78,11 +78,11 @@ async def put_habits_meta(
     if meta.order is not None:
         habit_list.order = meta.order
     if meta.pinned_today_ids is not None:
-        habit_list.today_pinned = meta.pinned_today_ids
+        habit_list.default_pins = meta.pinned_today_ids
     await _storage.save_user_habit_list(user, habit_list)
     return {
         "order": habit_list.order,
-        "pinned_today_ids": habit_list.today_pinned,
+        "pinned_today_ids": habit_list.default_pins,
     }
 
 
