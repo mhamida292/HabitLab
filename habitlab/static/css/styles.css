@@ -1427,6 +1427,25 @@ textarea.finp { resize: vertical; min-height: 80px; }
 }
 .tl-pin-row:hover { background: var(--bg-elevated); }
 .tl-pin-row input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+.tl-pin-star {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-size: 0.95rem;
+    line-height: 1;
+    color: var(--border);
+    transition: color 0.12s;
+}
+.tl-pin-star.on { color: var(--accent); }
+.tl-pin-star:disabled { cursor: default; opacity: 0.5; }
+.tl-pin-daycell {
+    width: 18px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+.tl-pin-dash { color: var(--text-muted); }
 
 /* ── Right column ────────────────────────────────────────────── */
 

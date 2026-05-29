@@ -364,21 +364,50 @@ function renderPinControl() {
     el.innerHTML = '';
     if (allHabits.length === 0) return;
 
+    const readOnly = viewDay < TODAY; // past days are read-only (matches add-task)
+
     el.appendChild(Object.assign(document.createElement('div'), { className: 'tl-divider' }));
 
     const label = document.createElement('div');
     label.className = 'tl-pin-label';
-    label.textContent = 'Pin habits to today';
+    label.textContent = 'Pin habits';
     el.appendChild(label);
 
     allHabits.forEach(h => {
-        const row = document.createElement('label');
+        const isDefault = defaultPins.includes(h.id);
+
+        const row = document.createElement('div');
         row.className = 'tl-pin-row';
 
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = pinnedIds.includes(h.id);
-        cb.addEventListener('change', () => togglePin(h.id));
+        // ★ default toggle — shows the habit every day
+        const star = document.createElement('button');
+        star.type = 'button';
+        star.className = 'tl-pin-star' + (isDefault ? ' on' : '');
+        star.textContent = isDefault ? '★' : '☆';
+        star.title = isDefault ? 'Shown every day — click to remove' : 'Show every day';
+        star.disabled = readOnly;
+        star.addEventListener('click', e => {
+            e.preventDefault();
+            if (!readOnly) toggleDefault(h.id);
+        });
+
+        // per-day cell: checkbox, or "—" when the habit is a default
+        const dayCell = document.createElement('span');
+        dayCell.className = 'tl-pin-daycell';
+        if (isDefault) {
+            const dash = document.createElement('span');
+            dash.className = 'tl-pin-dash';
+            dash.textContent = '—';
+            dash.title = 'Already shown every day';
+            dayCell.appendChild(dash);
+        } else {
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = dayPins.includes(h.id);
+            cb.disabled = readOnly;
+            cb.addEventListener('change', () => toggleDayPin(h.id));
+            dayCell.appendChild(cb);
+        }
 
         const iconWrap = document.createElement('span');
         iconWrap.appendChild(buildIconEl(h.icon || '📌', 13));
@@ -386,7 +415,7 @@ function renderPinControl() {
         const name = document.createElement('span');
         name.textContent = h.name;
 
-        row.append(cb, iconWrap, name);
+        row.append(star, dayCell, iconWrap, name);
         el.appendChild(row);
     });
     applyIcons();
@@ -669,15 +698,29 @@ async function toggleSg(h, sgId) {
     }
 }
 
-async function togglePin(habitId) {
-    if (pinnedIds.includes(habitId)) {
-        pinnedIds = pinnedIds.filter(id => id !== habitId);
+async function toggleDefault(habitId) {
+    if (defaultPins.includes(habitId)) {
+        defaultPins = defaultPins.filter(id => id !== habitId);
     } else {
-        pinnedIds = [...pinnedIds, habitId];
+        defaultPins = [...defaultPins, habitId];
     }
     render();
     try {
-        await api.put('/api/v1/habits/meta', { pinned_today_ids: pinnedIds });
+        await api.put('/api/v1/habits/meta', { default_pins: defaultPins });
+    } catch (err) {
+        toast('Failed to save pin — reload to resync', 'error');
+    }
+}
+
+async function toggleDayPin(habitId) {
+    if (dayPins.includes(habitId)) {
+        dayPins = dayPins.filter(id => id !== habitId);
+    } else {
+        dayPins = [...dayPins, habitId];
+    }
+    render();
+    try {
+        await api.put('/api/v1/habits/meta', { day_pins_date: viewDay, day_pins_ids: dayPins });
     } catch (err) {
         toast('Failed to save pin — reload to resync', 'error');
     }
