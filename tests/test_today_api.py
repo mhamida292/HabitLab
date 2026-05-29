@@ -191,3 +191,31 @@ async def test_day_pins_isolated_per_date_via_api(authed_client, habit):
 async def test_get_habits_meta_no_day_param_omits_day_pins(authed_client):
     resp = await authed_client.get("/api/v1/habits/meta")
     assert resp.json()["day_pins_ids"] is None
+
+
+@pytest.mark.asyncio
+async def test_put_habits_meta_can_clear_day_pins(authed_client, habit):
+    await authed_client.put(
+        "/api/v1/habits/meta",
+        json={"day_pins_date": "2026-06-05", "day_pins_ids": [habit["id"]]},
+    )
+    await authed_client.put(
+        "/api/v1/habits/meta",
+        json={"day_pins_date": "2026-06-05", "day_pins_ids": []},
+    )
+    resp = await authed_client.get("/api/v1/habits/meta?day=2026-06-05")
+    assert resp.json()["day_pins_ids"] == []
+
+
+@pytest.mark.asyncio
+async def test_put_habits_meta_day_pins_ids_without_date_rejected(authed_client, habit):
+    resp = await authed_client.put(
+        "/api/v1/habits/meta", json={"day_pins_ids": [habit["id"]]}
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_get_habits_meta_invalid_day_rejected(authed_client):
+    resp = await authed_client.get("/api/v1/habits/meta?day=not-a-date")
+    assert resp.status_code == 400

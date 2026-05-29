@@ -66,6 +66,11 @@ async def get_habits_meta(
     day: str | None = None,
     habit_list: HabitList = Depends(current_habit_list),
 ):
+    if day is not None:
+        try:
+            datetime.date.fromisoformat(day)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
     return HabitListMeta(
         order=habit_list.order,
         default_pins=habit_list.default_pins,
@@ -79,6 +84,16 @@ async def put_habits_meta(
     meta: HabitListMeta,
     user: User = Depends(current_active_user),
 ):
+    if meta.day_pins_ids is not None and meta.day_pins_date is None:
+        raise HTTPException(
+            status_code=400, detail="day_pins_ids requires day_pins_date"
+        )
+    if meta.day_pins_date is not None:
+        try:
+            datetime.date.fromisoformat(meta.day_pins_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
+
     habit_list = await _get_or_create_habit_list(user)
     if meta.order is not None:
         habit_list.order = meta.order
