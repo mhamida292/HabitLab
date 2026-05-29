@@ -444,6 +444,21 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     def default_pins(self, value: list[str]) -> None:
         self.data["default_pins"] = list(value)
 
+    # ── Pins: per-day ad-hoc ─────────────────────────────────────────────────────
+
+    @property
+    def day_pins(self) -> dict:
+        return self.data.setdefault("day_pins", {})
+
+    def get_day_pins(self, day: str) -> list[str]:
+        return list(self.day_pins.get(day, []))
+
+    def set_day_pins(self, day: str, ids: list[str]) -> None:
+        if ids:
+            self.day_pins[day] = list(ids)
+        else:
+            self.day_pins.pop(day, None)
+
     # ── Tasks ──────────────────────────────────────────────────────────────────
 
     def get_tasks(self, date: str, carry: bool = False) -> list[dict]:

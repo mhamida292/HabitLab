@@ -126,3 +126,33 @@ def test_carry_does_not_duplicate_todays_tasks(hl):
 
     results = hl.get_tasks(today, carry=True)
     assert len(results) == 1
+
+
+def test_day_pins_default_empty(hl):
+    assert hl.get_day_pins("2026-06-03") == []
+
+
+def test_day_pins_set_and_get(hl):
+    hl.set_day_pins("2026-06-03", ["journal"])
+    assert hl.get_day_pins("2026-06-03") == ["journal"]
+
+
+def test_day_pins_isolated_per_date(hl):
+    hl.set_day_pins("2026-06-03", ["journal"])
+    hl.set_day_pins("2026-06-04", ["study"])
+    assert hl.get_day_pins("2026-06-03") == ["journal"]
+    assert hl.get_day_pins("2026-06-04") == ["study"]
+
+
+def test_day_pins_empty_list_removes_date_key(hl):
+    hl.set_day_pins("2026-06-03", ["journal"])
+    hl.set_day_pins("2026-06-03", [])
+    assert hl.get_day_pins("2026-06-03") == []
+    assert "2026-06-03" not in hl.data.get("day_pins", {})
+
+
+def test_get_day_pins_returns_copy(hl):
+    hl.set_day_pins("2026-06-03", ["journal"])
+    got = hl.get_day_pins("2026-06-03")
+    got.append("mutated")
+    assert hl.get_day_pins("2026-06-03") == ["journal"]
