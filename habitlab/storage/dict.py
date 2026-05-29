@@ -431,15 +431,27 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
         self.data["notes"] = [n for n in notes if n["id"] != note_id]
         return len(self.data["notes"]) < before
 
-    # ── Today pinned ───────────────────────────────────────────────────────────
+    # ── Pins: daily defaults ─────────────────────────────────────────────────────
 
     @property
+    def default_pins(self) -> list[str]:
+        # Migrate legacy global pins (today_pinned) into defaults on first read.
+        if "default_pins" not in self.data and "today_pinned" in self.data:
+            self.data["default_pins"] = list(self.data["today_pinned"])
+        return list(self.data.setdefault("default_pins", []))
+
+    @default_pins.setter
+    def default_pins(self, value: list[str]) -> None:
+        self.data["default_pins"] = list(value)
+
+    # Backward compatibility alias (deprecated)
+    @property
     def today_pinned(self) -> list[str]:
-        return list(self.data.setdefault("today_pinned", []))
+        return self.default_pins
 
     @today_pinned.setter
     def today_pinned(self, value: list[str]) -> None:
-        self.data["today_pinned"] = list(value)
+        self.default_pins = value
 
     # ── Tasks ──────────────────────────────────────────────────────────────────
 

@@ -8,18 +8,23 @@ def hl():
     return DictHabitList({"habits": []})
 
 
-def test_today_pinned_default_empty(hl):
-    assert hl.today_pinned == []
+def test_default_pins_default_empty(hl):
+    assert hl.default_pins == []
 
 
-def test_today_pinned_set_and_get(hl):
-    hl.today_pinned = ["abc", "def"]
-    assert hl.today_pinned == ["abc", "def"]
+def test_default_pins_set_and_get(hl):
+    hl.default_pins = ["abc", "def"]
+    assert hl.default_pins == ["abc", "def"]
 
 
-def test_today_pinned_persists_in_data(hl):
-    hl.today_pinned = ["x"]
-    assert hl.data["today_pinned"] == ["x"]
+def test_default_pins_persists_in_data(hl):
+    hl.default_pins = ["x"]
+    assert hl.data["default_pins"] == ["x"]
+
+
+def test_default_pins_migrates_from_today_pinned():
+    hl = DictHabitList({"habits": [], "today_pinned": ["legacy1", "legacy2"]})
+    assert hl.default_pins == ["legacy1", "legacy2"]
 
 
 def test_add_task_returns_task(hl):
