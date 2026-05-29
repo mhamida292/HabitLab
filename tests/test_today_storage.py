@@ -156,3 +156,8 @@ def test_get_day_pins_returns_copy(hl):
     got = hl.get_day_pins("2026-06-03")
     got.append("mutated")
     assert hl.get_day_pins("2026-06-03") == ["journal"]
+
+
+def test_get_day_pins_does_not_mutate_data(hl):
+    hl.get_day_pins("2026-06-03")
+    assert "day_pins" not in hl.data

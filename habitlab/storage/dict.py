@@ -447,7 +447,7 @@ class DictHabitList(HabitList[DictHabit], DictStorage):
     # ── Pins: per-day ad-hoc ─────────────────────────────────────────────────────
 
     def get_day_pins(self, day: str) -> list[str]:
-        return list(self.data.setdefault("day_pins", {}).get(day, []))
+        return list(self.data.get("day_pins", {}).get(day, []))
 
     def set_day_pins(self, day: str, ids: list[str]) -> None:
         pins = self.data.setdefault("day_pins", {})

@@ -137,10 +137,11 @@ function initSortables() {
                     .map(el => el.dataset.habitId);
                 defaultPins = ids.filter(id => defaultPins.includes(id));
                 dayPins = ids.filter(id => dayPins.includes(id) && !defaultPins.includes(id));
-                Promise.all([
-                    api.put('/api/v1/habits/meta', { default_pins: defaultPins }),
-                    api.put('/api/v1/habits/meta', { day_pins_date: viewDay, day_pins_ids: dayPins }),
-                ]).catch(() => toast('Failed to save habit order', 'error'));
+                api.put('/api/v1/habits/meta', {
+                    default_pins: defaultPins,
+                    day_pins_date: viewDay,
+                    day_pins_ids: dayPins,
+                }).catch(() => toast('Failed to save habit order', 'error'));
             },
         });
     }
@@ -538,10 +539,15 @@ async function navigateDay(delta) {
     if (candidate > MAX_DAY) return;
     viewDay = candidate;
     try {
-        taskItems = await api.get(`/api/v1/tasks?date=${viewDay}&carry=${viewDay === TODAY}`);
+        const [tasks, meta] = await Promise.all([
+            api.get(`/api/v1/tasks?date=${viewDay}&carry=${viewDay === TODAY}`),
+            api.get(`/api/v1/habits/meta?day=${viewDay}`),
+        ]);
+        taskItems = tasks;
+        dayPins = meta.day_pins_ids || [];
         _lastRefresh = Date.now();
     } catch (err) {
-        toast(err?.message || 'Failed to load tasks', 'error');
+        toast(err?.message || 'Failed to load', 'error');
     }
     render();
 }
@@ -549,10 +555,15 @@ async function navigateDay(delta) {
 async function jumpToToday() {
     viewDay = TODAY;
     try {
-        taskItems = await api.get(`/api/v1/tasks?date=${TODAY}&carry=true`);
+        const [tasks, meta] = await Promise.all([
+            api.get(`/api/v1/tasks?date=${TODAY}&carry=true`),
+            api.get(`/api/v1/habits/meta?day=${TODAY}`),
+        ]);
+        taskItems = tasks;
+        dayPins = meta.day_pins_ids || [];
         _lastRefresh = Date.now();
     } catch (err) {
-        toast(err?.message || 'Failed to load tasks', 'error');
+        toast(err?.message || 'Failed to load', 'error');
     }
     render();
 }
