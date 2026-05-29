@@ -56,16 +56,21 @@ async def _get_user_habit(user: User, habit_id: str) -> Habit:
 
 class HabitListMeta(BaseModel):
     order: list[str] | None = None
-    pinned_today_ids: list[str] | None = None
+    default_pins: list[str] | None = None
+    day_pins_date: str | None = None
+    day_pins_ids: list[str] | None = None
 
 
 @api_router.get("/habits/meta", tags=["habits"])
 async def get_habits_meta(
+    day: str | None = None,
     habit_list: HabitList = Depends(current_habit_list),
 ):
     return HabitListMeta(
         order=habit_list.order,
-        pinned_today_ids=habit_list.default_pins,
+        default_pins=habit_list.default_pins,
+        day_pins_date=day,
+        day_pins_ids=habit_list.get_day_pins(day) if day else None,
     )
 
 
@@ -77,12 +82,20 @@ async def put_habits_meta(
     habit_list = await _get_or_create_habit_list(user)
     if meta.order is not None:
         habit_list.order = meta.order
-    if meta.pinned_today_ids is not None:
-        habit_list.default_pins = meta.pinned_today_ids
+    if meta.default_pins is not None:
+        habit_list.default_pins = meta.default_pins
+    if meta.day_pins_date is not None and meta.day_pins_ids is not None:
+        habit_list.set_day_pins(meta.day_pins_date, meta.day_pins_ids)
     await _storage.save_user_habit_list(user, habit_list)
     return {
         "order": habit_list.order,
-        "pinned_today_ids": habit_list.default_pins,
+        "default_pins": habit_list.default_pins,
+        "day_pins_date": meta.day_pins_date,
+        "day_pins_ids": (
+            habit_list.get_day_pins(meta.day_pins_date)
+            if meta.day_pins_date is not None
+            else None
+        ),
     }
 
 
