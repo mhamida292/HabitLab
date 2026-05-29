@@ -27,6 +27,11 @@ def test_default_pins_migrates_from_today_pinned():
     assert hl.default_pins == ["legacy1", "legacy2"]
 
 
+def test_default_pins_not_clobbered_when_both_keys_present():
+    hl = DictHabitList({"habits": [], "today_pinned": ["old"], "default_pins": ["new"]})
+    assert hl.default_pins == ["new"]
+
+
 def test_add_task_returns_task(hl):
     task = hl.add_task("Do laundry", "2026-05-26")
     assert task["text"] == "Do laundry"
