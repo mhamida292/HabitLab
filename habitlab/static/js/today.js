@@ -777,9 +777,10 @@ async function toggleSg(h, sgId) {
             if (existing) {
                 existing.done = result.done;
                 existing.count = result.count;
+                existing.missed = result.missed || false;
                 existing.sub_goals_done = result.sub_goals_done;
             } else {
-                habit.records.push({ day: viewDay, done: result.done, count: result.count, sub_goals_done: result.sub_goals_done });
+                habit.records.push({ day: viewDay, done: result.done, count: result.count, missed: result.missed || false, sub_goals_done: result.sub_goals_done });
             }
         }
     } catch (err) {
