@@ -80,6 +80,14 @@ class DictRecord(CheckedRecord, DictStorage):
     def sub_goals_done(self, value: list[str]) -> None:
         self.data["sub_goals_done"] = list(value)
 
+    @property
+    def missed(self) -> bool:
+        return bool(self.data.get("missed", False))
+
+    @missed.setter
+    def missed(self, value: bool) -> None:
+        self.data["missed"] = bool(value)
+
 
 class HabitDataCache:
     def __init__(self, habit: "DictHabit"):

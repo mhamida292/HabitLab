@@ -34,3 +34,62 @@ def test_sub_goals_done_on_record():
     assert record.sub_goals_done == ["fajr"]
     record.sub_goals_done = ["fajr", "dhuhr"]
     assert record.data["sub_goals_done"] == ["fajr", "dhuhr"]
+
+def test_missed_property_defaults_false():
+    h = make_habit(sub_goals=[])
+    import asyncio
+    day = datetime.date(2026, 6, 4)
+    asyncio.run(h.tick(day, count=0))
+    record = h.ticked_data[day]
+    assert record.missed is False
+
+def test_missed_setter_persists():
+    h = make_habit(sub_goals=[])
+    import asyncio
+    day = datetime.date(2026, 6, 4)
+    asyncio.run(h.tick(day, count=0))
+    record = h.ticked_data[day]
+    record.missed = True
+    assert record.data["missed"] is True
+    assert record.missed is True
+
+def test_tick_marks_missed():
+    h = make_habit(sub_goals=[])
+    import asyncio
+    day = datetime.date(2026, 6, 4)
+    asyncio.run(h.tick(day, missed=True))
+    record = h.ticked_data[day]
+    assert record.count == 0
+    assert record.done is False
+    assert record.missed is True
+
+def test_tick_done_clears_missed():
+    h = make_habit(sub_goals=[])
+    import asyncio
+    day = datetime.date(2026, 6, 4)
+    asyncio.run(h.tick(day, missed=True))
+    asyncio.run(h.tick(day, done=True))
+    record = h.ticked_data[day]
+    assert record.done is True
+    assert record.missed is False
+
+def test_tick_clear_resets_to_blank():
+    h = make_habit(sub_goals=[])
+    import asyncio
+    day = datetime.date(2026, 6, 4)
+    asyncio.run(h.tick(day, missed=True))
+    asyncio.run(h.tick(day, missed=False, done=False))
+    record = h.ticked_data[day]
+    assert record.count == 0
+    assert record.done is False
+    assert record.missed is False
+
+def test_tick_positive_count_clears_missed():
+    h = make_habit(sub_goals=[])
+    import asyncio
+    day = datetime.date(2026, 6, 4)
+    asyncio.run(h.tick(day, missed=True))
+    asyncio.run(h.tick(day, count=1))
+    record = h.ticked_data[day]
+    assert record.count == 1
+    assert record.missed is False
