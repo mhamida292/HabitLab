@@ -13,7 +13,7 @@ function localIso(d = new Date()) {
 // ── Module state ─────────────────────────────────────────────
 let calState = null;
 // calState = { habitId, subGoals, target, year, month, recordsByDay }
-// recordsByDay: Map<'YYYY-MM-DD', { count, done, sub_goals_done }>
+// recordsByDay: Map<'YYYY-MM-DD', { count, done, sub_goals_done, missed }>
 
 // ── Public API ───────────────────────────────────────────────
 
@@ -178,7 +178,7 @@ async function onCalCircleClick(cell, iso) {
         const result = await api.post(`/api/v1/habits/${habitId}/completions`, {
             count: newCount, date: iso, date_fmt: '%Y-%m-%d',
         });
-        const newRec = { count: result.count, done: result.done, sub_goals_done: result.sub_goals_done || [] };
+        const newRec = { count: result.count, done: result.done, sub_goals_done: result.sub_goals_done || [], missed: result.missed || false };
         recordsByDay.set(iso, newRec);
         paintCalCircle(cell, newRec, [], target);
         calState.onToggle?.(iso);
@@ -312,6 +312,7 @@ async function toggleSubgoal(habitId, iso, sgId, rec, recordsByDay, cell) {
             count: result.count,
             done: result.done,
             sub_goals_done: result.sub_goals_done,
+            missed: result.missed || false,
         };
         recordsByDay.set(iso, newRec);
         paintCalCircle(cell, newRec, calState.subGoals, calState.target);
