@@ -55,14 +55,23 @@
 
             <!-- Left: stats + calendar -->
             <div class="detail-col-left" id="detailLeft">
-                <!-- 4 stat cards (2×2) -->
+                <!-- 3 combined stat cards: count + its matching rate -->
                 <div class="stat-grid" id="statGrid">
-                    <div class="stat-card"><div class="stat-val" id="statMonthlyCheckins">—</div><div class="stat-lbl">This month</div></div>
-                    <div class="stat-card"><div class="stat-val" id="statTotalCheckins">—</div><div class="stat-lbl">Total days</div></div>
-                    <div class="stat-card"><div class="stat-val" id="statMonthlyRate">—</div><div class="stat-lbl">Monthly %</div></div>
-                    <div class="stat-card"><div class="stat-val" id="statAllTimeRate">—</div><div class="stat-lbl">All-time %</div></div>
-                    <div class="stat-card"><div class="stat-val streak" id="statStreak">—</div><div class="stat-lbl">Current streak</div></div>
-                    <div class="stat-card"><div class="stat-val" id="stat30dRate">—</div><div class="stat-lbl">30-day %</div></div>
+                    <div class="stat-card stat-combo">
+                        <div class="stat-lbl">This month</div>
+                        <div class="stat-combo-main"><span class="stat-val" id="statMonthlyCheckins">—</span><span class="stat-combo-unit">days</span></div>
+                        <div class="stat-combo-sub"><b id="statMonthlyRate">—</b> rate</div>
+                    </div>
+                    <div class="stat-card stat-combo">
+                        <div class="stat-lbl">All-time</div>
+                        <div class="stat-combo-main"><span class="stat-val" id="statTotalCheckins">—</span><span class="stat-combo-unit">days</span></div>
+                        <div class="stat-combo-sub"><b id="statAllTimeRate">—</b> rate</div>
+                    </div>
+                    <div class="stat-card stat-combo">
+                        <div class="stat-lbl">Recent</div>
+                        <div class="stat-combo-main"><span class="stat-val streak" id="statStreak">—</span><span class="stat-combo-unit">streak</span></div>
+                        <div class="stat-combo-sub"><b id="stat30dRate">—</b> last 30d</div>
+                    </div>
                 </div>
 
                 <!-- Inset calendar -->

@@ -865,11 +865,19 @@ textarea.finp { resize: vertical; min-height: 80px; }
     border: 1px solid var(--border); border-radius: 5px; cursor: pointer;
 }
 
-/* Detail panel stat-grid override (2x2 in left col) */
+/* Detail panel stat-grid override (3 combined cards in left col) */
 .detail-col-left .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     padding: 16px 16px 0;
 }
+
+/* Combined stat card: period label, count + unit, then its rate */
+.stat-combo { display: flex; flex-direction: column; }
+.stat-combo .stat-lbl { margin-top: 0; margin-bottom: 7px; }
+.stat-combo-main { display: flex; align-items: baseline; gap: 5px; }
+.stat-combo-unit { font-size: 11px; color: var(--text-secondary); }
+.stat-combo-sub { font-size: 12px; color: var(--text-secondary); margin-top: 7px; }
+.stat-combo-sub b { color: var(--accent); font-weight: 700; }
 
 /* Mobile detail panel */
 @media (max-width: 767px) {
@@ -904,6 +912,10 @@ textarea.finp { resize: vertical; min-height: 80px; }
     .stat-card { padding: 14px 16px; }
     .stat-card-label { font-size: 11px; }
     .stat-card-value { font-size: 22px; }
+    /* Combined cards: tighter so 3 fit a phone row */
+    .stat-combo { padding: 11px 11px; }
+    .stat-combo .stat-val { font-size: 20px; }
+    .stat-combo-sub { font-size: 11px; }
 
     /* Detail panel back button */
     .detail-back { font-size: 14px; padding: 14px 16px 4px; }
