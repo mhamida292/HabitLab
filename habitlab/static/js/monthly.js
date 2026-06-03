@@ -1,5 +1,6 @@
 // beaverhabits/static/js/monthly.js
 import { api, toast } from '/static/js/api.js';
+import { openDayMenu } from '/static/js/daymenu.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOWS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -29,7 +30,7 @@ export function mountCalendar(habitId, subGoals, target, records, onToggle) {
     const today = new Date();
     const map = new Map();
     for (const r of records) {
-        map.set(r.day, { count: r.count, done: r.done, sub_goals_done: r.sub_goals_done || [] });
+        map.set(r.day, { count: r.count, done: r.done, sub_goals_done: r.sub_goals_done || [], missed: r.missed || false });
     }
     calState = {
         habitId, subGoals, target,
@@ -91,7 +92,7 @@ function renderCalGrid(host) {
     for (let d = 1; d <= daysInMonth; d++) {
         const cellDate = new Date(year, month, d);
         const iso = localIso(cellDate);
-        const rec = recordsByDay.get(iso) || { count: 0, done: false, sub_goals_done: [] };
+        const rec = recordsByDay.get(iso) || { count: 0, done: false, sub_goals_done: [], missed: false };
         const isFuture = cellDate > today;
         const isToday = cellDate.getTime() === today.getTime();
 
@@ -105,13 +106,17 @@ function renderCalGrid(host) {
 
         if (!isFuture) {
             cell.addEventListener('click', () => onCalCircleClick(cell, iso));
+            cell.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                openCalDayMenu(cell, iso, e.clientX, e.clientY);
+            });
         }
         grid.appendChild(cell);
     }
 }
 
 function paintCalCircle(cell, rec, subGoals, target) {
-    cell.classList.remove('done', 'partial');
+    cell.classList.remove('done', 'partial', 'missed');
     cell.style.background = '';
     cell.innerHTML = '';
 
@@ -123,6 +128,15 @@ function paintCalCircle(cell, rec, subGoals, target) {
         const span = document.createElement('span');
         span.textContent = dayNum;
         cell.appendChild(span);
+        return;
+    }
+
+    if (rec.missed && !rec.done && rec.count < target) {
+        cell.classList.add('missed');
+        const x = document.createElement('span');
+        x.className = 'cal-x';
+        x.textContent = '✕';
+        cell.appendChild(x);
         return;
     }
 
@@ -157,7 +171,7 @@ async function onCalCircleClick(cell, iso) {
     }
 
     // Regular habit — step count
-    const rec = recordsByDay.get(iso) || { count: 0, done: false, sub_goals_done: [] };
+    const rec = recordsByDay.get(iso) || { count: 0, done: false, sub_goals_done: [], missed: false };
     const newCount = rec.count >= target ? 0 : rec.count + 1;
 
     try {
@@ -174,6 +188,40 @@ async function onCalCircleClick(cell, iso) {
     } catch (err) {
         toast(err.message, 'error');
     }
+}
+
+function openCalDayMenu(cell, iso, x, y) {
+    if (!calState) return;
+    const { habitId, subGoals, target, recordsByDay } = calState;
+
+    async function send(body) {
+        try {
+            const result = await api.post(`/api/v1/habits/${habitId}/completions`, {
+                date: iso, date_fmt: '%Y-%m-%d', ...body,
+            });
+            const prev = recordsByDay.get(iso) || { done: false };
+            const newRec = {
+                count: result.count,
+                done: result.done,
+                sub_goals_done: result.sub_goals_done || [],
+                missed: result.missed || false,
+            };
+            recordsByDay.set(iso, newRec);
+            paintCalCircle(cell, newRec, subGoals, target);
+            calState.onToggle?.(iso);
+            document.dispatchEvent(new CustomEvent('cal:toggled', {
+                detail: { habitId, iso, newRec, prevDone: prev.done },
+            }));
+        } catch (err) {
+            toast(err.message, 'error');
+        }
+    }
+
+    openDayMenu(x, y, {
+        onComplete: () => send({ done: true }),
+        onMissed:   () => send({ missed: true }),
+        onClear:    () => send({ missed: false, done: false }),
+    });
 }
 
 // ── Sub-goal popup picker ─────────────────────────────────────
