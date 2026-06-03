@@ -447,6 +447,8 @@ def _compute_habit_stats(habit, today: datetime.date) -> dict:
     monthly_checkins = sum(
         1 for r in habit.records if month_start <= r.day <= today and r.count >= target
     )
+    days_elapsed_this_month = (today - month_start).days + 1
+    monthly_rate = round(monthly_checkins / days_elapsed_this_month * 100, 1)
 
     sub_goals = habit.sub_goals or []
     effective_start = started
@@ -478,6 +480,7 @@ def _compute_habit_stats(habit, today: datetime.date) -> dict:
         "target_count": target,
         "date_started": started.isoformat(),
         "monthly_checkins": monthly_checkins,
+        "monthly_rate": monthly_rate,
         "all_time_rate": all_time_rate,
         "total_completion": sum(r.count for r in habit.records),
     }

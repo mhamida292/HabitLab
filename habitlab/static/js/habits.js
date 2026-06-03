@@ -717,8 +717,10 @@ async function refreshDetailStats(id) {
         const stats = await api.get(`/api/v1/habits/${id}/stats?today=${localIso()}`);
         document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
         document.getElementById('statTotalCheckins').textContent    = stats.total;
-        document.getElementById('statMonthlyRate').textContent      = `${stats.all_time_rate}%`;
+        document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_rate}%`;
+        document.getElementById('statAllTimeRate').textContent      = `${stats.all_time_rate}%`;
         document.getElementById('statStreak').textContent           = stats.streak;
+        document.getElementById('stat30dRate').textContent          = `${stats.percent_30d}%`;
     } catch { /* leave stale */ }
 }
 
@@ -748,8 +750,10 @@ async function selectHabit(id) {
         const stats = await api.get(`/api/v1/habits/${id}/stats?today=${localIso()}`);
         document.getElementById('statMonthlyCheckins').textContent  = stats.monthly_checkins;
         document.getElementById('statTotalCheckins').textContent    = stats.total;
-        document.getElementById('statMonthlyRate').textContent      = `${stats.all_time_rate}%`;
+        document.getElementById('statMonthlyRate').textContent      = `${stats.monthly_rate}%`;
+        document.getElementById('statAllTimeRate').textContent      = `${stats.all_time_rate}%`;
         document.getElementById('statStreak').textContent           = stats.streak;
+        document.getElementById('stat30dRate').textContent          = `${stats.percent_30d}%`;
     } catch { /* leave stale */ }
 
     // Mount calendar — refresh stats + sub-goals section on any date toggle
