@@ -134,3 +134,33 @@ async def test_tick_sub_goal_id_toggles_sub_goals_done(authed_client, habit):
     body3 = resp3.json()
     assert "fajr" not in body3["sub_goals_done"]
     assert body3["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_completion_missed_roundtrip(authed_client, habit):
+    # Mark a day missed
+    resp = await authed_client.post(
+        f"/api/v1/habits/{habit['id']}/completions",
+        json={"missed": True, "date": "2026-06-04", "date_fmt": "%Y-%m-%d"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["done"] is False
+    assert body["count"] == 0
+
+    # GET /habits should report missed: true for that day
+    habits = (await authed_client.get("/api/v1/habits")).json()
+    target = next(h for h in habits if h["id"] == habit["id"])
+    rec = next(r for r in target["records"] if r["day"] == "2026-06-04")
+    assert rec["missed"] is True
+
+    # Completing the day clears missed
+    await authed_client.post(
+        f"/api/v1/habits/{habit['id']}/completions",
+        json={"done": True, "date": "2026-06-04", "date_fmt": "%Y-%m-%d"},
+    )
+    habits2 = (await authed_client.get("/api/v1/habits")).json()
+    target2 = next(h for h in habits2 if h["id"] == habit["id"])
+    rec2 = next(r for r in target2["records"] if r["day"] == "2026-06-04")
+    assert rec2["missed"] is False
+    assert rec2["done"] is True

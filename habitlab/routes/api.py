@@ -146,6 +146,7 @@ async def get_habits(
                     "done": r.done,
                     "count": r.count,
                     "sub_goals_done": r.sub_goals_done,
+                    "missed": r.missed,
                 }
                 for r in x.records
             ],
@@ -349,6 +350,7 @@ class Tick(BaseModel):
     text: str | None = None
     date_fmt: str = "%d-%m-%Y"
     sub_goal_id: str | None = None  # if present, toggle this sub-goal only
+    missed: bool | None = None
 
 
 @api_router.post("/habits/{habit_id}/completions", tags=["habits"])
@@ -403,7 +405,7 @@ async def put_habit_completions(
             "sub_goals_done": current_done,
         }
 
-    record = await habit.tick(day, done=tick.done, text=tick.text, count=tick.count)
+    record = await habit.tick(day, done=tick.done, text=tick.text, count=tick.count, missed=tick.missed)
     await _storage.save_user_habit_list(user, habit_list)
     return {
         "day": day.strftime(tick.date_fmt),
@@ -641,6 +643,7 @@ def _record_to_dict(r) -> dict:
         "count": int(getattr(r, "count", 1 if r.done else 0)),
         "text": getattr(r, "text", "") or "",
         "sub_goals_done": getattr(r, "sub_goals_done", []),
+        "missed": bool(getattr(r, "missed", False)),
     }
 
 
