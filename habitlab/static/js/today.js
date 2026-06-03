@@ -1,6 +1,7 @@
 // beaverhabits/static/js/today.js
 import { api, toast } from '/static/js/api.js';
 import { buildIconEl, applyIcons } from '/static/js/icons.js';
+import { openDayMenu } from '/static/js/daymenu.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const MAX_FUTURE = 7; // max days ahead that can be planned
@@ -230,6 +231,7 @@ function renderHabitPins() {
     pinned.forEach(h => {
         const rec = h.records.find(r => r.day === viewDay);
         const isDone = rec && rec.done;
+        const isMissed = rec && rec.missed && !rec.done;
         const hasSg = h.sub_goals && h.sub_goals.length > 0;
         const busy = _inflight > 0;
 
@@ -240,8 +242,37 @@ function renderHabitPins() {
 
         // Habit row
         const row = document.createElement('div');
-        row.className = 'tl-habit-row' + (busy ? ' busy' : '') + (isDone ? ' done' : '');
+        row.className = 'tl-habit-row' + (busy ? ' busy' : '') + (isDone ? ' done' : '') + (isMissed ? ' missed' : '');
         row.addEventListener('click', () => { if (!busy) toggleHabit(h); });
+
+        // Desktop right-click → day menu
+        row.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            openHabitDayMenu(h, e.clientX, e.clientY);
+        });
+
+        // Touch long-press → day menu (cancelled on move / scroll)
+        let pressTimer = null, startX = 0, startY = 0, longFired = false;
+        row.addEventListener('touchstart', (e) => {
+            longFired = false;
+            const t = e.touches[0];
+            startX = t.clientX; startY = t.clientY;
+            pressTimer = setTimeout(() => {
+                longFired = true;
+                openHabitDayMenu(h, startX, startY);
+            }, 500);
+        }, { passive: true });
+        row.addEventListener('touchmove', (e) => {
+            const t = e.touches[0];
+            if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+                clearTimeout(pressTimer);
+            }
+        }, { passive: true });
+        const cancelPress = () => clearTimeout(pressTimer);
+        row.addEventListener('touchend', cancelPress);
+        row.addEventListener('touchcancel', cancelPress);
+        // Swallow the click that follows a long-press so it doesn't also toggle complete.
+        row.addEventListener('click', (e) => { if (longFired) { e.stopPropagation(); longFired = false; } }, true);
 
         const handle = document.createElement('div');
         handle.className = 'tl-drag-handle';
@@ -249,9 +280,14 @@ function renderHabitPins() {
         handle.addEventListener('click', e => e.stopPropagation());
 
         const circle = document.createElement('div');
-        circle.className = 'tl-habit-circle' + (isDone ? ' done' : '');
+        circle.className = 'tl-habit-circle' + (isDone ? ' done' : '') + (isMissed ? ' missed' : '');
         if (isDone) {
             circle.innerHTML = checkmarkSvg(11);
+        } else if (isMissed) {
+            const x = document.createElement('span');
+            x.className = 'tl-x';
+            x.textContent = '✕';
+            circle.appendChild(x);
         } else {
             circle.appendChild(buildIconEl(h.icon || '📌', 13));
         }
@@ -662,6 +698,39 @@ function enterEditMode(t, textSpan) {
         if (e.key === 'Escape') { cancel(); }
     });
     input.addEventListener('blur', save);
+}
+
+function openHabitDayMenu(h, x, y) {
+    if (viewDay > TODAY) return; // no future marking
+    async function send(body) {
+        _inflight++; render();
+        try {
+            const result = await api.post(`/api/v1/habits/${h.id}/completions`, {
+                date: viewDay, date_fmt: '%Y-%m-%d', ...body,
+            });
+            const habit = allHabits.find(hh => hh.id === h.id);
+            if (habit) {
+                const existing = habit.records.find(r => r.day === viewDay);
+                const patch = {
+                    done: result.done,
+                    count: result.count,
+                    missed: result.missed || false,
+                    sub_goals_done: result.sub_goals_done || [],
+                };
+                if (existing) Object.assign(existing, patch);
+                else habit.records.push({ day: viewDay, ...patch });
+            }
+        } catch (err) {
+            toast(err?.message || 'Failed to update habit', 'error');
+        } finally {
+            _inflight--; render();
+        }
+    }
+    openDayMenu(x, y, {
+        onComplete: () => send({ done: true }),
+        onMissed:   () => send({ missed: true }),
+        onClear:    () => send({ missed: false, done: false }),
+    });
 }
 
 async function toggleHabit(h) {
