@@ -403,6 +403,7 @@ async def put_habit_completions(
             "count": new_count,
             "target_count": habit.target_count,
             "sub_goals_done": current_done,
+            "missed": record.missed,
         }
 
     record = await habit.tick(day, done=tick.done, text=tick.text, count=tick.count, missed=tick.missed)
@@ -412,6 +413,7 @@ async def put_habit_completions(
         "done": record.done,
         "count": record.count,
         "target_count": habit.target_count,
+        "missed": record.missed,
     }
 
 

@@ -138,6 +138,7 @@ async def test_tick_sub_goal_id_toggles_sub_goals_done(authed_client, habit):
 
 @pytest.mark.asyncio
 async def test_completion_missed_roundtrip(authed_client, habit):
+    """POST missed:true marks a day missed; completing it clears the flag."""
     # Mark a day missed
     resp = await authed_client.post(
         f"/api/v1/habits/{habit['id']}/completions",
@@ -147,6 +148,7 @@ async def test_completion_missed_roundtrip(authed_client, habit):
     body = resp.json()
     assert body["done"] is False
     assert body["count"] == 0
+    assert body["missed"] is True
 
     # GET /habits should report missed: true for that day
     habits = (await authed_client.get("/api/v1/habits")).json()
