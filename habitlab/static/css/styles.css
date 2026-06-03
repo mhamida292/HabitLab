@@ -1555,3 +1555,17 @@ textarea.finp { resize: vertical; min-height: 80px; }
 .tr-week-lbl.today-lbl { color: var(--accent); font-weight: 700; }
 .ctx-menu-item.warn   { color: #f59e0b; }
 .ctx-menu-sep { height: 1px; background: var(--border); margin: 3px 0; }
+
+/* Missed-day state */
+.cal-circle.missed { color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
+.cal-circle .cal-x { font-weight: 600; font-size: 13px; }
+
+.tl-habit-circle .tl-x { color: var(--danger); font-weight: 600; font-size: 14px; }
+.tl-habit-circle.missed { border-color: color-mix(in srgb, var(--danger) 45%, transparent); color: var(--danger); }
+.tl-habit-row.missed .tl-habit-name { color: var(--text-secondary); }
+
+/* Day context-menu dots */
+.day-menu-dot { display: inline-block; width: 16px; text-align: center; margin-right: 8px; }
+.day-menu-dot.ok  { color: var(--success); }
+.day-menu-dot.bad { color: var(--danger); }
+.day-menu-dot.mut { color: var(--text-muted); }
