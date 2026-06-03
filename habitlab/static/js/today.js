@@ -252,13 +252,12 @@ function renderHabitPins() {
         });
 
         // Touch long-press → day menu (cancelled on move / scroll)
-        let pressTimer = null, startX = 0, startY = 0, longFired = false;
+        let pressTimer = null, startX = 0, startY = 0, longFiredAt = 0;
         row.addEventListener('touchstart', (e) => {
-            longFired = false;
             const t = e.touches[0];
             startX = t.clientX; startY = t.clientY;
             pressTimer = setTimeout(() => {
-                longFired = true;
+                longFiredAt = Date.now();
                 openHabitDayMenu(h, startX, startY);
             }, 500);
         }, { passive: true });
@@ -271,8 +270,12 @@ function renderHabitPins() {
         const cancelPress = () => clearTimeout(pressTimer);
         row.addEventListener('touchend', cancelPress);
         row.addEventListener('touchcancel', cancelPress);
-        // Swallow the click that follows a long-press so it doesn't also toggle complete.
-        row.addEventListener('click', (e) => { if (longFired) { e.stopPropagation(); longFired = false; } }, true);
+        // Capture phase (runs before the bubble-phase toggleHabit click above):
+        // swallow only the trailing click of the SAME long-press gesture (~700ms window),
+        // so a later tap on the row is never eaten.
+        row.addEventListener('click', (e) => {
+            if (Date.now() - longFiredAt < 700) { e.stopPropagation(); longFiredAt = 0; }
+        }, true);
 
         const handle = document.createElement('div');
         handle.className = 'tl-drag-handle';
@@ -715,10 +718,12 @@ function openHabitDayMenu(h, x, y) {
                     done: result.done,
                     count: result.count,
                     missed: result.missed || false,
-                    sub_goals_done: result.sub_goals_done || [],
                 };
+                // Only touch sub_goals_done when the response actually carries it,
+                // so a parent-level complete/missed doesn't wipe partial sub-goals.
+                if (result.sub_goals_done !== undefined) patch.sub_goals_done = result.sub_goals_done;
                 if (existing) Object.assign(existing, patch);
-                else habit.records.push({ day: viewDay, ...patch });
+                else habit.records.push({ day: viewDay, sub_goals_done: [], ...patch });
             }
         } catch (err) {
             toast(err?.message || 'Failed to update habit', 'error');
@@ -746,9 +751,9 @@ async function toggleHabit(h) {
         if (habit) {
             const existing = habit.records.find(r => r.day === viewDay);
             if (existing) {
-                existing.done = result.done; existing.count = result.count;
+                existing.done = result.done; existing.count = result.count; existing.missed = result.missed || false;
             } else {
-                habit.records.push({ day: viewDay, done: result.done, count: result.count, sub_goals_done: [] });
+                habit.records.push({ day: viewDay, done: result.done, count: result.count, missed: result.missed || false, sub_goals_done: [] });
             }
         }
     } catch (err) {
