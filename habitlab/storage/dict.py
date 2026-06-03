@@ -290,8 +290,8 @@ class DictHabit(Habit[DictRecord], DictStorage):
             new_missed = bool(missed)
         else:
             new_missed = record.missed if record is not None else False
-        # Invariant: a done / non-zero day can never be "missed".
-        if new_count >= target or new_count > 0:
+        # Invariant: a non-zero (i.e. done or partial) day can never be "missed".
+        if new_count > 0:
             new_missed = False
 
         if "records" not in self.data:
