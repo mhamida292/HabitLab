@@ -268,6 +268,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
         done: bool | None = None,
         text: str | None = None,
         count: int | None = None,
+        missed: bool | None = None,
     ) -> CheckedRecord:
         # Resolve target count for "done" semantics.
         target = self.target_count
@@ -284,6 +285,15 @@ class DictHabit(Habit[DictRecord], DictStorage):
         else:
             new_count = max(0, int(count))
 
+        # Resolve missed flag. Existing value is the fallback when `missed` is omitted.
+        if missed is not None:
+            new_missed = bool(missed)
+        else:
+            new_missed = record.missed if record is not None else False
+        # Invariant: a done / non-zero day can never be "missed".
+        if new_count >= target or new_count > 0:
+            new_missed = False
+
         if "records" not in self.data:
             self.data["records"] = []
 
@@ -291,6 +301,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
             # Update existing in-place
             record.data["count"] = new_count
             record.data["done"] = new_count >= target
+            record.data["missed"] = new_missed
             if text is not None:
                 record.data["text"] = text
         else:
@@ -298,6 +309,7 @@ class DictHabit(Habit[DictRecord], DictStorage):
                 "day": day.strftime(DAY_MASK),
                 "count": new_count,
                 "done": new_count >= target,
+                "missed": new_missed,
             }
             if text is not None:
                 data["text"] = text
